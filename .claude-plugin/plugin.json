@@ -1,0 +1,16 @@
+{
+  "name": "sdlc",
+  "version": "0.1.0",
+  "description": "Deterministic, auditable software delivery with beads and worktrees",
+  "author": {
+    "name": "Guillaume"
+  },
+  "license": "MIT",
+  "keywords": [
+    "sdlc",
+    "beads",
+    "worktrees",
+    "orchestration",
+    "automation"
+  ]
+}

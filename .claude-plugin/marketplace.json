@@ -1,0 +1,14 @@
+{
+  "name": "claude-sdlc",
+  "owner": {
+    "name": "Guillaume"
+  },
+  "plugins": [
+    {
+      "name": "sdlc",
+      "source": "./",
+      "description": "Deterministic, auditable software delivery with beads and worktrees",
+      "version": "0.1.0"
+    }
+  ]
+}
