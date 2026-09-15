@@ -6,11 +6,12 @@ usage() {
 Usage: check.sh
 
 Checks this machine for what sdlc needs, one line per item:
-  ok <tool> <version>        present, recent enough
-  missing <tool> <why>       required and not found
-  old <tool> <version> <min> required and too old
-  optional <tool> <status>   only needed for some features
-  recommended <name> <status> companion that makes the workflow better or cheaper
+  os <name>                    operating system, with a warning appended if not Linux
+  ok <tool> <version>          present, recent enough
+  missing <tool>               required and not found
+  old <tool> <version> <min>   required and too old
+  optional <tool> <status>     only needed for some features
+  recommended <name> <status>  companion that makes the workflow better or cheaper
 
 Always exits 0; read the lines.
 EOF2
@@ -33,11 +34,12 @@ need bd 1.2.2 bd version
 need wt 0.77 wt --version
 need git 2.30 git --version
 need jq 1.6 jq --version
+need python3 3.9 python3 --version
 for tool in uuidgen setsid pgrep timeout; do command -v "$tool" >/dev/null && echo "ok $tool present" || echo "missing $tool"; done
 command -v gh >/dev/null && echo "optional gh $(version_of gh --version) (epic-pr mode)" || echo "optional gh not installed (only needed for epic-pr mode)"
 
 agent_file() { [[ -f "$HOME/.claude/agents/$1.md" || -f ".claude/agents/$1.md" ]]; }
-command -v rtk >/dev/null && echo "recommended rtk installed" || echo "recommended rtk not installed: compresses command output, so every session and worker spends fewer tokens"
+rtk gain >/dev/null 2>&1 && echo "recommended rtk installed" || echo "recommended rtk not installed: compresses command output, so every session and worker spends fewer tokens"
 { agent_file bulk-reader || [[ -d "$HOME/.claude/skills/bulk-read" ]]; } && echo "recommended reading-agent installed (bulk-reader)" \
   || echo "recommended reading-agent not found: the planning skills hand file reading to a cheap reading agent, and fall back to Explore on Haiku"
 agent_file reviewer && echo "recommended reviewer-agent installed" \
