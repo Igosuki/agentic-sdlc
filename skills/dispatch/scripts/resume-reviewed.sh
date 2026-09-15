@@ -8,7 +8,7 @@ Usage: resume-reviewed.sh
 Resumes tasks waiting on a human review whose gate is now resolved: for each
 in_progress task with dispatch_state=awaiting-review, whose dispatch_review_gate
 is closed and whose worker process isn't alive, clears dispatch_state and
-resumes its session to read the review and continue. Run by watch.sh.
+resumes its session to read the review and continue. Run by watch.py.
 
 Prints "resumed <task>" for each one it resumes.
 Exit codes: 0 done.

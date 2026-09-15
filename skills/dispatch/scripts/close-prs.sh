@@ -8,7 +8,7 @@ Usage: close-prs.sh
 Closes epic-pr integration tasks whose pull request was merged, and their epics.
 Such a task keeps dispatch_state=pr-opened and a gh:pr gate that blocks it; once
 bd gate check (or a person, with bd gate resolve) closes the gate, this closes
-the task, then its epic when all the epic's tasks are closed. Run by watch.sh.
+the task, then its epic when all the epic's tasks are closed. Run by watch.py.
 
 Prints "closed <id>" for each task and epic it closes.
 Exit codes: 0 done.

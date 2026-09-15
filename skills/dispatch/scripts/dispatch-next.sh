@@ -30,7 +30,7 @@ dir=$(dirname "$(readlink -f "$0")")
 parallel=${parallel:-$("$dir/settings.sh" parallel)}
 [[ "$parallel" =~ ^[1-9][0-9]*$ ]] || { echo "error: parallel must be a positive number, got $parallel" >&2; exit 2; }
 
-running=$("$dir/workers.sh" --alive-count)
+running=$("$dir/workers.py" --alive-count)
 filter=()
 [[ -z "$epic" ]] || filter=(--epic "$epic")
 for task in $("$dir/next-tasks.py" --ids "${filter[@]}"); do
