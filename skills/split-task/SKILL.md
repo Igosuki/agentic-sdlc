@@ -3,7 +3,7 @@ name: split-task
 description: Split an existing bead (task or epic) into child tasks with acceptance criteria, scope, verify command and dependencies. Use when a bead is too large, or was created by hand without a breakdown.
 argument-hint: "<bead-id> [instructions]"
 model: opus
-allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/skills/create-task/scripts/create-task.sh *), Bash(bd *)
+allowed-tools: Bash(${CLAUDE_SKILL_DIR}/../create-task/scripts/create-task.sh *), Bash(bd *)
 ---
 
 # Split task
@@ -36,12 +36,12 @@ If the bead is only a title, nothing covers it, or it conflicts with an existing
 
 ## 2. Decompose
 
-Apply the sizing, granularity, shared-interface, scope and task-format rules from the split-plan skill: `${CLAUDE_PLUGIN_ROOT}/skills/split-plan/SKILL.md`, section 2. Read that section if it isn't already in your context.
+Apply the sizing, granularity, shared-interface, scope and task-format rules from the split-plan skill: `${CLAUDE_SKILL_DIR}/../split-plan/SKILL.md`, section 2. Read that section if it isn't already in your context.
 
 Create each child, in dependency order:
 
 ```bash
-${CLAUDE_PLUGIN_ROOT}/skills/create-task/scripts/create-task.sh --parent <bead-id> \
+${CLAUDE_SKILL_DIR}/../create-task/scripts/create-task.sh --parent <bead-id> \
   --title "<title>" --description "<details>" --acceptance "<checks>" \
   --scope "<path/,other/path>" --verify "<command>" \
   --complexity small|medium|large --domain <domain> \

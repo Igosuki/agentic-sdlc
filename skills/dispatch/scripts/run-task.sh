@@ -180,8 +180,10 @@ Don't merge or close the task by other means."
 fi
 
 plugin_root=$(cd "$dir/../../.." && pwd)
-worker=(env "DISPATCH_TASK=$id" claude -p --session-id "$session" --plugin-dir "$plugin_root" --permission-mode auto --output-format stream-json --verbose --forward-subagent-text
+worker=(env "DISPATCH_TASK=$id" claude -p --session-id "$session" --permission-mode auto --output-format stream-json --verbose --forward-subagent-text
   --allowedTools "Bash($finish *)")
+# Installed as a plugin, workers load it so its hooks apply; installed as plain skills, there are no hooks.
+[[ ! -f "$plugin_root/.claude-plugin/plugin.json" ]] || worker+=(--plugin-dir "$plugin_root")
 agent=$(get "$task" .metadata.execution_agent_type)
 model=$(get "$task" .metadata.execution_suggested_model)
 effort=$(get "$task" .metadata.execution_reasoning_effort)

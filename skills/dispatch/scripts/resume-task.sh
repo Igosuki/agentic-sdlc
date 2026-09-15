@@ -68,8 +68,10 @@ fi
 
 prompt=${prompt:-"Your session was interrupted before you finished. Check the state of the worktree, then continue task $id from where you stopped."}
 plugin_root=$(cd "$dir/../../.." && pwd)
-worker=(env "DISPATCH_TASK=$id" claude -p --resume "$session" --plugin-dir "$plugin_root" --permission-mode auto --output-format stream-json --verbose --forward-subagent-text
+worker=(env "DISPATCH_TASK=$id" claude -p --resume "$session" --permission-mode auto --output-format stream-json --verbose --forward-subagent-text
   --allowedTools "Bash($dir/finish-task.sh *)")
+# Installed as a plugin, workers load it so its hooks apply; installed as plain skills, there are no hooks.
+[[ ! -f "$plugin_root/.claude-plugin/plugin.json" ]] || worker+=(--plugin-dir "$plugin_root")
 agent=$(get .metadata.execution_agent_type)
 model=$(get .metadata.execution_suggested_model)
 effort=$(get .metadata.execution_reasoning_effort)

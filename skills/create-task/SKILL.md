@@ -24,7 +24,7 @@ Bead commands return little and can run directly:
 
 ## 2. Fill in the task
 
-Follow the task format and verify rules of the split-plan skill, `${CLAUDE_PLUGIN_ROOT}/skills/split-plan/SKILL.md`, section 2. Read that section if it isn't already in your context.
+Follow the task format and verify rules of the split-plan skill, `${CLAUDE_SKILL_DIR}/../split-plan/SKILL.md`, section 2. Read that section if it isn't already in your context.
 - **Verify:** one short command that exits 0 when the acceptance is met. It must exercise the behaviour, so a syntax check alone doesn't count.
 - **Scope:** the path prefixes the task changes.
 - **Large tasks:** if the task is large, create it anyway, then suggest `/sdlc:split-task <id>`.

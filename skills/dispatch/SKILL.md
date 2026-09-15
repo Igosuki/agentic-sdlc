@@ -52,4 +52,4 @@ Watch with the Monitor tool, `persistent: true`, command `${CLAUDE_SKILL_DIR}/sc
 
 - The epics and tasks closed, and what is still open or waiting.
 - Each stopped, failed or crashed task, with its reason and next step.
-- The cost, from `${CLAUDE_PLUGIN_ROOT}/skills/stats/scripts/stats.sh`.
+- The cost, from `${CLAUDE_SKILL_DIR}/../stats/scripts/stats.sh`.

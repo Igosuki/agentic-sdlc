@@ -9,7 +9,7 @@ argument-hint: "<what to build>"
 Request: $ARGUMENTS
 
 Settings:
-!`${CLAUDE_PLUGIN_ROOT}/skills/dispatch/scripts/settings.sh`
+!`${CLAUDE_SKILL_DIR}/../dispatch/scripts/settings.sh`
 
 Run the whole workflow for this request. Each phase is a skill of this plugin: invoke it with the Skill tool and follow it.
 

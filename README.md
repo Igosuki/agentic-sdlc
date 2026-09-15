@@ -50,9 +50,24 @@ A one-off request and a long-running project go through the same flow. What carr
 
 ## Installation
 
+Pick one.
+
+**Claude Code plugin** (recommended: it includes the hooks, and the skills are named `/sdlc:*`):
+
 ```bash
-claude plugin marketplace add https://github.com/<owner>/claude-sdlc
-claude plugin install sdlc@claude-sdlc
+claude plugin marketplace add https://github.com/Igosuki/claude-sdlc && claude plugin install sdlc@claude-sdlc
+```
+
+**Skills CLI** (skills only, without the hooks, and named without the `sdlc:` prefix):
+
+```bash
+npx skills add Igosuki/claude-sdlc
+```
+
+**A prompt** to paste into Claude Code:
+
+```text
+install the sdlc plugin at https://github.com/Igosuki/claude-sdlc
 ```
 
 Then, in Claude Code (run `/reload-plugins` if a session was already open):
@@ -61,10 +76,6 @@ Then, in Claude Code (run `/reload-plugins` if a session was already open):
 /sdlc:setup     # once per machine: checks beads, worktrunk and the other tools, recommends companions
 /sdlc:init      # once per project: beads, integration mode, target branch, local settings
 ```
-
-Or paste this prompt into Claude Code:
-
-> Install the sdlc Claude Code plugin: run `claude plugin marketplace add https://github.com/<owner>/claude-sdlc`, then `claude plugin install sdlc@claude-sdlc`, then `/reload-plugins`. Then run `/sdlc:setup`, and `/sdlc:init` in this project.
 
 To try it from a local clone, for one session only:
 

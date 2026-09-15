@@ -11,7 +11,7 @@ allowed-tools: Bash(${CLAUDE_SKILL_DIR}/scripts/init.sh *), Bash(git status *), 
 Arguments: $ARGUMENTS
 
 Current settings:
-!`${CLAUDE_PLUGIN_ROOT}/skills/dispatch/scripts/settings.sh 2>&1 || true`
+!`${CLAUDE_SKILL_DIR}/../dispatch/scripts/settings.sh 2>&1 || true`
 
 ## 1. Choose
 

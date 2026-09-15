@@ -65,7 +65,7 @@ List the open points whose answer would change a contract, a goal or the scope. 
 
 **Where to write:**
 1. the location the request asks for; otherwise
-2. the configured design directory, if set: !`${CLAUDE_PLUGIN_ROOT}/skills/dispatch/scripts/settings.sh design_dir`; otherwise
+2. the configured design directory, if set: !`${CLAUDE_SKILL_DIR}/../dispatch/scripts/settings.sh design_dir`; otherwise
 3. the repository's existing design-doc convention; otherwise
 4. `docs/design/<slug>.md`.
 
