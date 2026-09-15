@@ -3,7 +3,7 @@ name: split-plan
 description: Split a plan into a beads task graph (one or several epics, tasks, subtasks and dependencies, shaped by the agent), each task with acceptance criteria, scope and verify command. The plan can be markdown docs (for example from sdlc:design), a plan made in plan mode earlier in the conversation, or a plain prompt. Use when work needs to become beads tasks.
 argument-hint: "[doc paths...] [prompt or instructions]"
 model: opus
-allowed-tools: Bash(${CLAUDE_SKILL_DIR}/../create-task/scripts/create-task.sh *), Bash(bd *)
+allowed-tools: Bash(${CLAUDE_SKILL_DIR}/../create-task/scripts/create-task.sh *), Bash(${CLAUDE_PLUGIN_ROOT}/skills/create-task/scripts/create-task.sh *), Bash(bd *), Read(/${CLAUDE_SKILL_DIR}/references/**)
 ---
 
 # Split plan
@@ -48,7 +48,7 @@ Break the plan into a beads task graph. You decide its shape: one epic, several 
 
 Follow `references/task-rules.md` for sizing, granularity, review level, shared interfaces, scope and task format. Read it if it isn't already in your context.
 
-Create each bead in dependency order. Use single quotes, and write an apostrophe as `'\''`:
+Create each bead in dependency order, running the script with the path exactly as written. Use single quotes, and write an apostrophe as `'\''`:
 
 ```bash
 ${CLAUDE_SKILL_DIR}/../create-task/scripts/create-task.sh --title '<title>' --description '<details>' \

@@ -3,7 +3,7 @@ name: create-task
 description: Create one beads task that sdlc:dispatch can run, with acceptance criteria, scope, a verify command that exercises the behaviour and complexity, and optionally its epic, the tasks it waits for, and an agent, model or effort hint. Use when the user wants to add a single task rather than split a plan.
 argument-hint: "<what the task should do> [--parent <epic>] [--after <id>]"
 model: sonnet
-allowed-tools: Bash(${CLAUDE_SKILL_DIR}/scripts/create-task.sh *), Bash(bd *)
+allowed-tools: Bash(${CLAUDE_SKILL_DIR}/scripts/create-task.sh *), Bash(bd *), Read(/${CLAUDE_SKILL_DIR}/../split-plan/references/**), Read(/${CLAUDE_PLUGIN_ROOT}/skills/split-plan/references/**)
 ---
 
 # Create task
@@ -38,9 +38,11 @@ Ask with AskUserQuestion only what you can't infer, such as which epic the task 
 
 ## 3. Create
 
+Run the script with the path exactly as written. Use single quotes, and write an apostrophe as `'\''`:
+
 ```bash
-${CLAUDE_SKILL_DIR}/scripts/create-task.sh --title "<title>" --description "<details>" \
-  --acceptance "<checks>" --scope "<path/,other/path>" --verify "<command>" \
+${CLAUDE_SKILL_DIR}/scripts/create-task.sh --title '<title>' --description '<details>' \
+  --acceptance '<checks>' --scope '<path/,other/path>' --verify '<command>' \
   --complexity small|medium|large \
   [--parent <epic>] [--after <id>]... [--design <doc>] [--priority 0-4] \
   [--agent <agent>] [--model <model>] [--effort <level>] [--review none|agent|human]
