@@ -155,13 +155,14 @@ Epic: $epic (bd show $epic; bd children $epic lists the sibling tasks)"
 The task is already split: implement it here, don't decompose or dispatch it further.
 This is your own git worktree, on branch $branch, created from $base. You own this task until it is closed:
 1. Implement it and commit. Only committed work is merged.
-2. Run: $finish $id
+2. Review the change when you judge it worthwhile, for example with a reviewer agent, and address what matters.
+3. Run: $finish $id
    It rebases onto $base, runs the verify command, merges into $base and closes the task. If it reports a problem (a failing verify, a conflict with a sibling's change on $base), fix it, commit, and run it again. git log $base and bd show <task> explain what sibling tasks changed.
-3. If you can't finish, record what's missing with: bd comments add $id \"<what's missing>\", then stop.
+4. If you can't finish, record what's missing with: bd comments add $id \"<what's missing>\", then stop.
 Don't merge or close the task by other means."
 fi
 
-worker=(claude -p --session-id "$session" --permission-mode auto --output-format stream-json --verbose
+worker=(claude -p --session-id "$session" --permission-mode auto --output-format stream-json --verbose --forward-subagent-text
   --allowedTools "Bash($finish *)")
 agent=$(get "$task" .metadata.execution_agent_type)
 model=$(get "$task" .metadata.execution_suggested_model)

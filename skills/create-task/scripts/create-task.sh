@@ -18,13 +18,16 @@ Options:
   --design PATH          design or source doc the bead comes from
   --after ID             this bead waits for ID (repeatable)
   --priority N           0-4, default 2
+  --agent NAME           execution_agent_type: the worker runs as this agent
+  --model MODEL          execution_suggested_model: the worker's model when no agent is set
+  --effort LEVEL         execution_reasoning_effort: low|medium|high|xhigh|max
 
 Exit codes: 0 created, 2 invalid arguments (all problems listed), 1 bd failed.
 EOF
 }
 
 type=task title="" description="" parent="" acceptance="" scope="" verify=""
-complexity="" domain="" design="" priority=2
+complexity="" domain="" design="" priority=2 agent="" model="" effort=""
 after=()
 
 while [[ $# -gt 0 ]]; do
@@ -43,6 +46,9 @@ while [[ $# -gt 0 ]]; do
     --design) design="$2" ;;
     --after) after+=("$2") ;;
     --priority) priority="$2" ;;
+    --agent) agent="$2" ;;
+    --model) model="$2" ;;
+    --effort) effort="$2" ;;
     *) echo "error: unknown option $1" >&2; usage >&2; exit 2 ;;
   esac
   shift 2
@@ -62,6 +68,7 @@ case "$type" in
   *) errors+=("--type must be task or epic") ;;
 esac
 [[ "$priority" =~ ^[0-4]$ ]] || errors+=("--priority must be 0-4")
+[[ -z "$effort" || "$effort" =~ ^(low|medium|high|xhigh|max)$ ]] || errors+=("--effort must be low, medium, high, xhigh or max")
 # bd dep add reports success for unknown ids without recording anything.
 for ref in "$parent" "${after[@]}"; do
   [[ -z "$ref" ]] || bd show "$ref" --json >/dev/null 2>&1 || errors+=("no bead $ref")
@@ -74,8 +81,9 @@ if [[ ${#errors[@]} -gt 0 ]]; then
 fi
 
 metadata=$(jq -cn --arg scope "$scope" --arg verify "$verify" --arg complexity "$complexity" \
-  --arg domain "$domain" --arg design "$design" \
-  '{scope: $scope, verify: $verify, complexity: $complexity, domain: $domain, design: $design}
+  --arg domain "$domain" --arg design "$design" --arg agent "$agent" --arg model "$model" --arg effort "$effort" \
+  '{scope: $scope, verify: $verify, complexity: $complexity, domain: $domain, design: $design,
+    execution_agent_type: $agent, execution_suggested_model: $model, execution_reasoning_effort: $effort}
    | with_entries(select(.value != ""))')
 
 args=(create "$title" --type "$type" --description "$description" --priority "$priority"

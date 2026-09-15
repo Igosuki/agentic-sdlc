@@ -3,7 +3,7 @@ name: split-plan
 description: Split a plan into a beads task graph (one or several epics, tasks, subtasks and dependencies, shaped by the agent), each task with acceptance criteria, scope and verify command. The plan can be markdown docs (for example from sdlc:design), a plan made in plan mode earlier in the conversation, or a plain prompt. Use when work needs to become beads tasks.
 argument-hint: "[doc paths...] [prompt or instructions]"
 model: opus
-allowed-tools: Bash(${CLAUDE_SKILL_DIR}/scripts/create-task.sh *), Bash(bd *)
+allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/skills/create-task/scripts/create-task.sh *), Bash(bd *)
 ---
 
 # Split plan
@@ -41,11 +41,14 @@ Break the plan into a beads task graph. You decide its shape: one epic, several 
 Create each bead in dependency order:
 
 ```bash
-${CLAUDE_SKILL_DIR}/scripts/create-task.sh --title "<title>" --description "<details>" \
+${CLAUDE_PLUGIN_ROOT}/skills/create-task/scripts/create-task.sh --title "<title>" --description "<details>" \
   --acceptance "<checks>" --scope "<path/,other/path>" --verify "<command>" \
   --complexity small|medium|large --domain <domain> \
-  [--type epic] [--parent <id>] [--after <id>]... [--design <doc>]
+  [--type epic] [--parent <id>] [--after <id>]... [--design <doc>] \
+  [--agent <agent>] [--model <model>] [--effort <level>]
 ```
+
+Set `--agent`, `--model` or `--effort` only when a task clearly needs a particular installed agent, model or effort. Otherwise the worker and the user's configuration decide.
 
 Use `bd` directly for anything the script doesn't cover. Review the boundaries, and decompose further where needed.
 
@@ -93,13 +96,15 @@ Prior art that lives outside the repository (Notion, Drive, wikis) may not be re
 
 Example:
 ```bash
-${CLAUDE_SKILL_DIR}/scripts/create-task.sh --parent sdlc-a1b \
+${CLAUDE_PLUGIN_ROOT}/skills/create-task/scripts/create-task.sh --parent sdlc-a1b \
   --title "Implement user authentication" \
   --description "JWT auth: POST /auth/login, token validation middleware, refresh token rotation. Uses the users table from the schema task." \
   --acceptance "Valid credentials return a token; invalid ones return 401; expired tokens are rejected" \
   --scope "src/auth/,tests/auth/" --verify "pytest tests/auth -v" \
   --complexity medium --domain backend --after sdlc-a1b.1
 ```
+
+**In plan mode**, don't create anything: plan mode is read-only. Write the task graph into the plan file instead, with every field the script takes and the dependencies, so the user approves it with the plan. Once plan mode has ended and the plan is approved, create exactly that graph, and don't ask for approval again.
 
 ## 3. Show and confirm
 

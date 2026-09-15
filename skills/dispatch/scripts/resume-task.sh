@@ -67,7 +67,7 @@ if [[ ${#errors[@]} -gt 0 ]]; then
 fi
 
 prompt=${prompt:-"Your session was interrupted before you finished. Check the state of the worktree, then continue task $id from where you stopped."}
-worker=(claude -p --resume "$session" --permission-mode auto --output-format stream-json --verbose
+worker=(claude -p --resume "$session" --permission-mode auto --output-format stream-json --verbose --forward-subagent-text
   --allowedTools "Bash($dir/finish-task.sh *)")
 agent=$(get .metadata.execution_agent_type)
 model=$(get .metadata.execution_suggested_model)
