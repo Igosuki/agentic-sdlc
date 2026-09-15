@@ -43,7 +43,7 @@ sessions=$( { bd list --type event --all --limit 0 --json |
   [[ -z "$current" ]] || echo "$current"; } | awk '!seen[$0]++')
 [[ -n "$sessions" ]] || { echo "$id was never dispatched"; exit 1; }
 
-render='
+render='fromjson? | (
   if .type == "dispatch_run" then "── run started \(.started)"
   elif .type == "assistant" then
     (if .parent_tool_use_id then "    " else "" end) as $in
@@ -56,7 +56,7 @@ render='
     | .message.content[]? | select(.type == "tool_result")
     | "\($in)  \(if .is_error then "✗" else "←" end) \((.content | if type == "array" then map(.text? // "") | join(" ") else tostring end) | gsub("\\s+"; " ") | .[0:200])"
   elif .type == "result" then "── result \(.subtype) · $\(.total_cost_usd) · \(.num_turns) turns"
-  else empty end'
+  else empty end)'
 
 for session in $sessions; do
   log="$logs/$id-$session.jsonl"
@@ -66,7 +66,7 @@ for session in $sessions; do
   fi
   echo "═══ $id · session $session"
   if [[ -f "$log" ]]; then
-    jq -r "$render" "$log" 2>/dev/null || echo "(unreadable log $log)"
+    jq -rR "$render" "$log" 2>/dev/null || echo "(unreadable log $log)"
     [[ ! -s "$log.err" ]] || { echo "── stderr"; cat "$log.err"; }
     [[ ! -s "$log.record" ]] || { echo "── recorded"; cat "$log.record"; }
   else
@@ -76,5 +76,5 @@ done
 
 if $follow && ! $raw && [[ -n "$current" ]]; then
   echo "═══ following $id · session $current (Ctrl-C to stop)"
-  tail -n 0 -F "$logs/$id-$current.jsonl" | jq -r --unbuffered "$render"
+  tail -n 0 -F "$logs/$id-$current.jsonl" | jq -rR --unbuffered "$render"
 fi

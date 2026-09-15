@@ -78,11 +78,11 @@ while IFS= read -r task; do
     fi
     if [[ -f "$log" ]]; then
       echo "  log: $log"
-      echo "  worker runs: $(jq -c 'select(.type == "dispatch_run")' "$log" 2>/dev/null | wc -l)"
-      result=$(jq -r 'select(.type == "result") | "\(.subtype) (error: \(.is_error))"' "$log" 2>/dev/null | tail -1)
+      echo "  worker runs: $(jq -cR 'fromjson? | select(.type == "dispatch_run")' "$log" 2>/dev/null | wc -l)"
+      result=$(jq -rR 'fromjson? | select(.type == "result") | "\(.subtype) (error: \(.is_error))"' "$log" 2>/dev/null | tail -1)
       echo "  result: ${result:-none}"
       echo "  last events:"
-      jq -r 'select(.type == "assistant" or .type == "user") | .message.content[]?
+      jq -rR 'fromjson? | select(.type == "assistant" or .type == "user") | .message.content[]?
         | if .type == "tool_use" then "tool call \(.name): \((.input.command // .input.file_path // .input.description // "") | tostring)"
           elif .type == "text" then "text: \(.text)"
           elif .type == "tool_result" then "tool result\(if .is_error then " (error)" else "" end): \(.content | if type == "array" then map(.text? // "") | join(" ") else tostring end)"

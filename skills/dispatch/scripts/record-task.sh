@@ -36,15 +36,16 @@ agent=$(get .metadata.execution_agent_type)
 [[ -n "$session" ]] || { echo "error: $id was never dispatched" >&2; exit 2; }
 
 log="$(git rev-parse --path-format=absolute --git-common-dir)/sdlc/logs/$id-$session.jsonl"
-results=$(jq -c 'select(.type == "result")' "$log" 2>/dev/null) || results=""
+# A worker killed mid-write leaves a truncated line, so every reader parses line by line.
+results=$(jq -cR 'fromjson? | select(.type == "result")' "$log" 2>/dev/null) || results=""
 [[ -n "$results" ]] || { echo "no result for $id in $log: the worker didn't end normally"; exit 1; }
 last=$(tail -1 <<<"$results")
 
 # run-task.sh and resume-task.sh write a dispatch_run line before each worker process. Within a
 # process, every result line repeats its cumulative cost (one per wake-up), so the cost is the
 # last result of each run; turns and durations are per result.
-read -r cost turns seconds < <(jq -rs '
-  [foreach .[] as $l ({run: 0, line: null};
+read -r cost turns seconds < <(jq -rnR '
+  [inputs | fromjson?] | [foreach .[] as $l ({run: 0, line: null};
      if $l.type == "dispatch_run" then .run += 1 | .line = null
      elif $l.type == "result" then .line = ($l + {run: .run})
      else .line = null end;
@@ -54,7 +55,7 @@ read -r cost turns seconds < <(jq -rs '
      (map(.duration_ms // 0) | add / 1000 | floor)] | @tsv' "$log")
 models=$(jq -rs 'map(.modelUsage // {} | keys) | add | unique | join(",")' <<<"$results")
 agents=$( { [[ -z "$agent" ]] || echo "$agent"
-  jq -r 'select(.type == "assistant") | .message.content[]?
+  jq -rR 'fromjson? | select(.type == "assistant") | .message.content[]?
     | select(.type == "tool_use" and (.name == "Agent" or .name == "Task"))
     | .input.subagent_type // "general-purpose"' "$log" 2>/dev/null; } | sort -u | paste -sd, -)
 summary=$(jq -r '.result // empty' <<<"$last")
