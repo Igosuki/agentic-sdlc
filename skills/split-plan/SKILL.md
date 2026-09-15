@@ -12,6 +12,12 @@ Arguments: $ARGUMENTS
 
 Beads in this repository: !`bd where >/dev/null 2>&1 && echo "initialized" || echo "not initialized"`
 
+## Mode
+
+- **Plan mode is active:** decompose into the plan file, using labels (T1, T2…) for `--parent` and `--after` in place of ids. Write nothing to beads: no `bd init`, no `create-task.sh`, no step 3.
+- **An approved plan in this conversation already holds a task graph:** create it, mapping labels to the ids `create-task.sh` prints, without asking again.
+- **Otherwise:** steps 1–3.
+
 ## Reading
 
 Don't read files, documents or external sources yourself. Delegate every read to a subagent, then think over what it returns.
@@ -32,18 +38,22 @@ Have the reader collect what you need from the repository to name real paths and
 
 Splitting doesn't implement anything: don't write code, build prototypes or run verify commands to check them.
 
-If beads is not initialized, run `bd init --non-interactive --skip-agents --skip-hooks` and say so.
+If beads is not initialized, send the user to `/sdlc:init` and stop.
+
+Bead commands return little and can run directly: `bd search <terms>` and `bd list --type epic` find an epic that already covers the plan (stop and say so) and open tasks the new ones must wait for (`--after <existing-id>`).
 
 ## 2. Decompose
 
 Break the plan into a beads task graph. You decide its shape: one epic, several epics, tasks nested under larger tasks. Choose whatever fits the plan.
 
-Create each bead in dependency order:
+Follow `references/task-rules.md` for sizing, granularity, review level, shared interfaces, scope and task format. Read it if it isn't already in your context.
+
+Create each bead in dependency order. Use single quotes, and write an apostrophe as `'\''`:
 
 ```bash
-${CLAUDE_SKILL_DIR}/../create-task/scripts/create-task.sh --title "<title>" --description "<details>" \
-  --acceptance "<checks>" --scope "<path/,other/path>" --verify "<command>" \
-  --complexity small|medium|large --domain <domain> \
+${CLAUDE_SKILL_DIR}/../create-task/scripts/create-task.sh --title '<title>' --description '<details>' \
+  --acceptance '<checks>' --scope '<path/,other/path>' --verify '<command>' \
+  --complexity small|medium|large \
   [--type epic] [--parent <id>] [--after <id>]... [--design <doc>] \
   [--agent <agent>] [--model <model>] [--effort <level>] [--review none|agent|human]
 ```
@@ -52,72 +62,25 @@ Set `--agent`, `--model` or `--effort` only when a task clearly needs a particul
 
 Use `bd` directly for anything the script doesn't cover. Review the boundaries, and decompose further where needed.
 
-### Task sizing
-
-Estimate each task's complexity:
-- **small:** under 50 lines, 1–2 files
-- **medium:** under 200 lines, some design decisions
-- **large:** over 200 lines, or architectural. Decompose it into subtasks.
-
-A large task becomes a parent with small or medium children: create the children with `--parent <large-task-id>`.
-
-### Task granularity
-
-Create subtasks when:
-- clear interface boundaries exist (for example "define schema" and "implement parser")
-- parts could genuinely be worked on in parallel
-- different expertise or concerns are involved (for example backend and frontend)
-- separate verification steps are required
-- >2 people/agents could meaningfully work on different parts simultaneously
-
-Keep work together when:
-- it is tightly coupled, so changing one part requires changing another
-- it shares state or context (parsing and validating the same structure)
-- it has a single verification point
-
-### Review
-
-Set `--review` on each task:
-- `agent`: medium and large tasks, and any task touching authentication, security, payments, data migrations or public APIs
-- `human`: a person must sign off — security-sensitive changes, destructive migrations, legal or compliance text
-- `none`: small documentation, configuration or test-only tasks
-
-### Shared interfaces
-
-If a task defines interfaces that other tasks consume (types, schemas, API contracts, file formats), make it a separate task and make the consumers wait for it with `--after`. Otherwise they build against nothing.
-
-### Scope
-
-`--scope` lists the path prefixes a task may change. Two tasks that don't wait for each other must not share a path: either add `--after` or merge the tasks.
-
-### Task format
-
-The fields are split like this:
-- **Description:** what to do, the interfaces the task depends on from other tasks, and the design sections or prior-art files that matter. Implementation guidance belongs here.
-- **Acceptance:** observable checks.
-- **Verify:** one short command that exits 0 when the acceptance is met, usually the test the task itself adds, for example `node --test test/auth.test.js` or `pytest tests/auth -v`. No inline scripts.
-  - It must exercise the behaviour the acceptance describes. A syntax check or a lint alone doesn't count.
-  - It may only rely on files that exist once this task and the tasks it waits for are done.
-
-Prior art that lives outside the repository (Notion, Drive, wikis) may not be reachable by the agent that implements the task. Copy the facts the task needs into its description, along with the link.
+A source that isn't committed on the target branch — a document named in the arguments that hasn't been committed, or a plan-mode plan — is invisible to workers, who branch from committed code. Copy the facts each task needs into its description, the same way you copy facts from prior art that lives outside the repository.
 
 Example:
 ```bash
 ${CLAUDE_SKILL_DIR}/../create-task/scripts/create-task.sh --parent sdlc-a1b \
-  --title "Implement user authentication" \
-  --description "JWT auth: POST /auth/login, token validation middleware, refresh token rotation. Uses the users table from the schema task." \
-  --acceptance "Valid credentials return a token; invalid ones return 401; expired tokens are rejected" \
-  --scope "src/auth/,tests/auth/" --verify "pytest tests/auth -v" \
-  --complexity medium --domain backend --after sdlc-a1b.1 --review agent
+  --title 'Implement user authentication' \
+  --description 'JWT auth: POST /auth/login, token validation middleware, refresh token rotation. Uses the users table from the schema task.' \
+  --acceptance 'Valid credentials return a token; invalid ones return 401; expired tokens are rejected' \
+  --scope 'src/auth/,tests/auth/' --verify 'pytest tests/auth -v' \
+  --complexity medium --after sdlc-a1b.1 --review agent
 ```
-
-**In plan mode**, don't create anything: plan mode is read-only. Write the task graph into the plan file instead, with every field the script takes and the dependencies, so the user approves it with the plan. Once plan mode has ended and the plan is approved, create exactly that graph, and don't ask for approval again.
 
 ## 3. Show and confirm
 
 For each epic you created, run `bd swarm validate <epic>`. It reports dependency cycles, tasks nothing leads to, and parts of the graph that aren't connected. Fix what it reports, with `bd` or the script, before going on.
 
-Show the graph you created: `bd list --parent <id> --pretty` for each top-level bead.
+Show the graph you created: `bd list --parent <id> --pretty` for each top-level bead, plus the dependencies from `create-task.sh`'s `created <id> ... after <ids>` lines.
 
-- **If you can ask the user:** wait for approval. Apply any requested changes with `create-task.sh` or `bd`.
-- **If you can't ask:** report the tree, plus any part of the plan that no task covers, and why.
+If any `--design` document, or another source you copied facts from, isn't committed on the target branch, say it needs a commit before `/sdlc:dispatch`.
+
+- **If you can ask the user:** use AskUserQuestion. Wait for approval, apply any requested changes with `create-task.sh` or `bd`, and run `bd swarm validate` again.
+- **If you can't ask** (headless session): report the tree, plus any part of the plan that no task covers, and why.
