@@ -1,7 +1,8 @@
 ---
 name: build
-description: Take a request from idea to merged code in one session. Designs it and splits it into tasks in plan mode, for the user's approval, then creates the tasks and dispatches them to workers. Use when the user wants the whole sdlc workflow for a request.
+description: "Take a request from idea to integrated code: design and task split in plan mode for the user's approval, then write the design, create the beads tasks, commit and dispatch workers. Use when the user asks to build, add or change something end to end with sdlc, or when this project routes new work here (workflow: build). For a single phase, use sdlc:design, sdlc:split-plan or sdlc:dispatch."
 argument-hint: "<what to build>"
+allowed-tools: Bash(${CLAUDE_SKILL_DIR}/../dispatch/scripts/settings.sh *), Bash(git branch --show-current), Bash(git add *), Bash(git commit *)
 ---
 
 # Build
@@ -9,29 +10,38 @@ argument-hint: "<what to build>"
 Request: $ARGUMENTS
 
 Settings:
-!`${CLAUDE_SKILL_DIR}/../dispatch/scripts/settings.sh`
+!`${CLAUDE_SKILL_DIR}/../dispatch/scripts/settings.sh 2>&1 || true`
+
+Current branch:
+!`git branch --show-current 2>&1 || true`
 
 Run the whole workflow for this request. Each phase is a skill of this plugin: invoke it with the Skill tool and follow it.
 
 ## 1. Plan
 
-1. Enter plan mode with the EnterPlanMode tool, unless it is already active. If the tool isn't available (headless session), skip plan mode and go on.
+Compare the current branch above with the target from the settings above. If they differ, a switch is needed: note it for the plan below. If it can't happen (for example the target branch doesn't exist, or local changes block it), stop here and report why — don't create anything.
+
+1. Enter plan mode with the EnterPlanMode tool, unless it is already active. If the tool isn't available (headless session), skip plan mode and go on — without plan mode, `sdlc:design` writes the document and `sdlc:split-plan` creates the tasks in steps 2 and 3 below, so skip step 4 here, and steps 1 and 2 under Create.
 2. Invoke `sdlc:design` with the request. In plan mode, it puts the design document in the plan file.
-3. Invoke `sdlc:split-plan` on that design. In plan mode, it puts the task graph in the plan file.
+3. Invoke `sdlc:split-plan` on that design, so the request becomes exactly one top-level epic (no nested epics — group large work with parent tasks instead). Carry that epic's id to Dispatch below.
+   - In plan mode, the document doesn't exist on disk yet: tell split-plan to split the design straight from the plan file, and to set `--design <path>` — the path the document will be written to — on the tasks it creates. It puts the task graph in the plan file and creates nothing.
+   - Without plan mode, split-plan creates the task graph now.
 4. Exit plan mode with ExitPlanMode. The plan asks the user to approve:
    - the design document, and where it will be written
-   - the task graph
-   - what happens next: writing the document, creating the tasks, committing both on the target branch, and dispatching
+   - the task graph, under its one top-level epic
+   - the branch switch above, if any
+   - the integration mode, target branch, parallel limit and default review level, from the settings above
+   - what happens next: writing the document, committing it on the target branch, and dispatching
 
    If the user asks for changes, revise the plan and ask again.
 
 ## 2. Create
 
-Once the plan is approved:
+Once the plan is approved (skip 1 and 2 below without plan mode — step 1 above already wrote the document and created the tasks):
 1. Write the design document to its location.
 2. Invoke `sdlc:split-plan` to create the approved task graph. It doesn't ask for approval again.
-3. Commit the design document and `.beads/` on the target branch from the settings above. Workers branch from committed code, so an uncommitted document is invisible to them. If the current branch isn't the target, tell the user, and ask before switching.
+3. Switch to the target branch if step 1 found a switch was needed — already approved with the plan, so no need to ask again. Then commit the design document there: `git add` it and `git commit`. The reason is the design document itself: tasks live in Dolt, not git, so there's nothing else to commit. Workers branch from committed code, so an uncommitted document is invisible to them.
 
 ## 3. Dispatch
 
-Invoke `sdlc:dispatch` with the epics you created. It dispatches the tasks, follows the workers until nothing is left, and reports.
+Invoke `sdlc:dispatch` with the one epic id from step 1 (Plan), once the commit above has succeeded — or, without plan mode, once split-plan has created the tasks in step 1. The plan already covered dispatching, the integration mode, target branch, parallel limit and review level, so dispatch doesn't need to ask again. It dispatches the tasks, follows the workers until nothing is left, and reports.
