@@ -6,13 +6,14 @@ usage() {
 Usage: resume-task.sh <task-id> [--prompt TEXT] [--ended]
 
 Resumes the Claude session of a task whose worker crashed, detached, in the
-task's worktree, and returns. When the worker ends, record-task.sh records the
-attempt, as after run-task.sh.
+task's worktree, and returns. Releases the branch's merge queue first, in case
+the crashed worker died holding it. When the worker ends, record-task.sh
+records the attempt, as after run-task.sh.
 
-The task must be in_progress with dispatch_state=running and no process
-running its session, and still have its worktree and its session transcript.
-If the worker had in fact ended (its log has a result), the attempt is
-recorded instead of resumed, unless --ended is given.
+The task must be in_progress, claimed (dispatch_session set) with no outcome
+recorded yet, and no process running its session, and still have its worktree
+and its session transcript. If the worker had in fact ended (its log has a
+result), the attempt is recorded instead of resumed, unless --ended is given.
 
 Options:
   --prompt TEXT   message for the resumed session, default: continue where you stopped
@@ -46,16 +47,21 @@ task=$(bd show "$id" --json 2>/dev/null | jq '.[0]' 2>/dev/null) || { echo "erro
 get() { jq -r "$1 // empty" <<<"$task"; }
 session=$(get .metadata.dispatch_session)
 branch=$(get .metadata.dispatch_branch)
+base=$(get .metadata.dispatch_base)
+state=$(get .metadata.dispatch_state)
 log="$(git rev-parse --path-format=absolute --git-common-dir)/sdlc/logs/$id-$session.jsonl"
 
-if [[ "$(get .status)" != in_progress || "$(get .metadata.dispatch_state)" != running || -z "$session" ]]; then
-  echo "error: $id has no dispatched worker to resume (status $(get .status), dispatch_state: $(get .metadata.dispatch_state))" >&2
+# decision 2: no outcome recorded means dispatch_state is empty, or still "running"
+# for a task claimed before that value was retired.
+if [[ "$(get .status)" != in_progress || -z "$session" || ( -n "$state" && "$state" != running ) ]]; then
+  echo "error: $id has no dispatched worker to resume (status $(get .status), dispatch_state: $state)" >&2
   exit 2
 fi
-if pgrep -f -- "--(session-id|resume) $session" >/dev/null; then
+if [[ "$(bd list --all --limit 0 --json | "$dir/tasks.py" worker "$id")" == true ]]; then
   echo "error: the worker for $id is still running" >&2
   exit 2
 fi
+"$dir/merge-queue.sh" release "$base" "$id" >/dev/null
 if [[ "$ended" == false ]] && jq -eR 'fromjson? | select(.type == "result")' "$log" >/dev/null 2>&1; then
   exec "$dir/record-task.sh" "$id"
 fi

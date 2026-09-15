@@ -30,11 +30,13 @@ The keys documented in [beads' metadata page](https://beads.gascity.com/core-con
 
 ## Dispatch state
 
-Set by the dispatch scripts on each task. They can be queried, for example `bd list --metadata-field dispatch_state=running`.
+Set by the dispatch scripts on each task. They can be queried, for example `bd list --metadata-field dispatch_state=stopped`.
+
+There's no `dispatch_state` value for a running worker. A task's worker is **running** when it is claimed (`in_progress` with `dispatch_session` set), a process exists for it — `run-task.sh <task>` still starting it, or the worker session itself — and no attempt outcome is recorded yet (`dispatch_state` unset). A claimed task with no such process and no outcome has **crashed**.
 
 | Key | Set by | Meaning |
 |---|---|---|
-| `dispatch_state` | run, finish, record | `running`, `merged`, `pr-opened`, `awaiting-review`, `stopped` or `failed` |
+| `dispatch_state` | run, finish, record | unset while running; otherwise `merged`, `pr-opened`, `awaiting-review`, `stopped` or `failed` |
 | `dispatch_session` | run-task.sh | Claude session id of the worker, set before it starts |
 | `dispatch_host` | run-task.sh | machine the worker runs on |
 | `dispatch_base` | run-task.sh | branch the task merges into |

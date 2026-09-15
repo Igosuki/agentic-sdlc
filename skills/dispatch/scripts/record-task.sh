@@ -20,7 +20,8 @@ the worktree, unless untracked files are left in it. A task awaiting review
 keeps its worktree.
 
 A log without a result means the worker didn't end normally: nothing is
-recorded, and the task stays dispatch_state=running, which shows as crashed.
+recorded, and the task stays claimed with no outcome recorded, which shows as
+crashed.
 
 Exit codes: 0 recorded, 1 no result to record, 2 invalid arguments.
 EOF
@@ -29,6 +30,7 @@ EOF
 [[ "${1:-}" == -h || "${1:-}" == --help ]] && { usage; exit 0; }
 [[ $# -eq 1 && "$1" != -* ]] || { usage >&2; exit 2; }
 id="$1"
+dir=$(dirname "$(readlink -f "$0")")
 
 task=$(bd show "$id" --json 2>/dev/null | jq '.[0]' 2>/dev/null) || { echo "error: no bead $id" >&2; exit 2; }
 get() { jq -r "$1 // empty" <<<"$task"; }
@@ -43,18 +45,7 @@ results=$(jq -cR 'fromjson? | select(.type == "result")' "$log" 2>/dev/null) || 
 [[ -n "$results" ]] || { echo "no result for $id in $log: the worker didn't end normally"; exit 1; }
 last=$(tail -1 <<<"$results")
 
-# run-task.sh and resume-task.sh write a dispatch_run line before each worker process. Within a
-# process, every result line repeats its cumulative cost (one per wake-up), so the cost is the
-# last result of each run; turns and durations are per result.
-read -r cost turns seconds < <(jq -rnR '
-  [inputs | fromjson?] | [foreach .[] as $l ({run: 0, line: null};
-     if $l.type == "dispatch_run" then .run += 1 | .line = null
-     elif $l.type == "result" then .line = ($l + {run: .run})
-     else .line = null end;
-     .line // empty)]
-  | [(group_by(.run) | map(last.total_cost_usd // 0) | add),
-     (map(.num_turns // 0) | add),
-     (map(.duration_ms // 0) | add / 1000 | floor)] | @tsv' "$log")
+read -r cost turns seconds < <("$dir/tasks.py" log-totals "$log")
 models=$(jq -rs 'map(.modelUsage // {} | keys) | add | unique | join(",")' <<<"$results")
 agents=$( { [[ -z "$agent" ]] || echo "$agent"
   jq -rR 'fromjson? | select(.type == "assistant") | .message.content[]?

@@ -26,9 +26,11 @@ Worker options come from the task's metadata: execution_agent_type (--agent),
 execution_suggested_model (--model, default sonnet, ignored with an agent),
 execution_reasoning_effort (--effort).
 
-Sets on the task: dispatch_state=running, dispatch_session, dispatch_host,
-dispatch_base, dispatch_branch, dispatch_started. The worker runs with DISPATCH_TASK=<task>
-and this plugin loaded, so its hooks keep it on the task's lifecycle. The worker log is .git/sdlc/logs/<task>-<session>.jsonl.
+Sets on the task: dispatch_session, dispatch_host, dispatch_base, dispatch_branch,
+dispatch_started. The worker runs with DISPATCH_TASK=<task> and this plugin loaded, so
+its hooks keep it on the task's lifecycle. The worker log is .git/sdlc/logs/<task>-<session>.jsonl.
+On any failure after the claim, the task goes back to open, that metadata is removed, and
+the reason is printed, including the worktree creation error when that's the cause.
 Prints: "started <task> <worktree> <log>".
 Exit codes: 0 started, 1 could not start, 2 invalid arguments or task not dispatchable.
 EOF
@@ -47,12 +49,9 @@ children() { bd list --parent "$1" --all --limit 0 --json | jq -c '[.[] | select
 task=$(show "$id") || { echo "error: no bead $id" >&2; exit 2; }
 role=$(get "$task" .metadata.dispatch_role)
 
-epic="" epic_bead="" parent=$(get "$task" .parent)
-while [[ -n "$parent" ]]; do
-  bead=$(show "$parent") || break
-  if [[ "$(get "$bead" .issue_type)" == epic ]]; then epic="$parent" epic_bead="$bead"; break; fi
-  parent=$(get "$bead" .parent)
-done
+epic=$(bd list --all --limit 0 --json | "$dir/tasks.py" epic "$id")
+epic_bead=""
+[[ -z "$epic" ]] || epic_bead=$(show "$epic")
 
 target=$(config target)
 target=${target:-main}
@@ -112,10 +111,21 @@ session=$(uuidgen)
 logs="$(git rev-parse --path-format=absolute --git-common-dir)/sdlc/logs"
 mkdir -p "$logs"
 log="$logs/$id-$session.jsonl"
-bd update "$id" --claim --set-metadata dispatch_state=running --set-metadata "dispatch_session=$session" \
+bd update "$id" --claim --set-metadata "dispatch_session=$session" \
   --set-metadata "dispatch_host=$(uname -n)" --set-metadata "dispatch_base=$base" \
   --set-metadata "dispatch_branch=$branch" --set-metadata "dispatch_started=$(date -u +%FT%TZ)" >/dev/null \
   || { echo "error: could not claim $id" >&2; exit 1; }
+
+# Claimed but not yet started: undo the claim on any failure from here on, so a
+# supervisor sees the task as open again instead of a false crash.
+started=false
+rollback() {
+  [[ "$started" == true ]] || bd update "$id" --status open --unset-metadata dispatch_session \
+    --unset-metadata dispatch_host --unset-metadata dispatch_base --unset-metadata dispatch_branch \
+    --unset-metadata dispatch_started >/dev/null
+}
+trap rollback EXIT
+fail() { printf 'error: %s\n' "$1" >&2; exit 1; }
 
 if [[ "$role" == integration ]]; then
   switch=(wt switch "$branch" --no-cd --format json)
@@ -123,9 +133,9 @@ else
   switch=(wt switch --create "$branch" --base "$base" --no-cd --format json)
 fi
 "${switch[@]}" </dev/null >/dev/null 2>"$log.wt" \
-  || { echo "error: could not create the worktree for $branch, see $log.wt" >&2; exit 1; }
+  || fail "could not create the worktree for $branch: $(cat "$log.wt" 2>/dev/null)"
 wt_path=$(wt list --format json </dev/null 2>/dev/null | jq -r --arg b "$branch" '.items[] | select(.branch == $b) | .worktree.path // empty')
-[[ -n "$wt_path" && -d "$wt_path" ]] || { echo "error: no worktree for branch $branch" >&2; exit 1; }
+[[ -n "$wt_path" && -d "$wt_path" ]] || fail "no worktree for branch $branch"
 
 finish="$dir/finish-task.sh"
 if [[ "$role" == integration && "$mode" == epic-pr ]]; then
@@ -202,4 +212,5 @@ setsid -f bash -c '
   cd "$root" && "$record" "$id" >>"$log.record" 2>&1
 ' run-task "$wt_path" "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")" "$log" "$dir/record-task.sh" "$id" \
   "${worker[@]}" "$prompt" </dev/null >/dev/null 2>&1
+started=true
 echo "started $id $wt_path $log"
