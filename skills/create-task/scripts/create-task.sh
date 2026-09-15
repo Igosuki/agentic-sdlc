@@ -9,12 +9,13 @@ Creates one bead and prints: created <id> <type> "<title>"
 
 Options:
   --type task|epic       default: task
-  --parent ID            parent epic or task
+  --parent ID            parent epic or task. If it's under an epic that's closed
+                         or already integrating, this exits 2 instead of creating
+                         anything.
   --acceptance TEXT      required for tasks
   --scope PATHS          required for tasks, comma-separated path prefixes
   --verify CMD           required for tasks, command that exits 0 when done
   --complexity SIZE      required for tasks: small|medium|large
-  --domain NAME          required for tasks, e.g. frontend, backend, infra
   --design PATH          design or source doc the bead comes from
   --after ID             this bead waits for ID (repeatable)
   --priority N           0-4, default 2
@@ -28,8 +29,11 @@ Exit codes: 0 created, 2 invalid arguments (all problems listed), 1 bd failed.
 EOF
 }
 
+dir=$(dirname "$(readlink -f "$0")")
+tasks_py="$dir/../../dispatch/scripts/tasks.py"
+
 type=task title="" description="" parent="" acceptance="" scope="" verify=""
-complexity="" domain="" design="" priority=2 agent="" model="" effort="" review=""
+complexity="" design="" priority=2 agent="" model="" effort="" review=""
 after=()
 
 while [[ $# -gt 0 ]]; do
@@ -44,7 +48,6 @@ while [[ $# -gt 0 ]]; do
     --scope) scope="$2" ;;
     --verify) verify="$2" ;;
     --complexity) complexity="$2" ;;
-    --domain) domain="$2" ;;
     --design) design="$2" ;;
     --after) after+=("$2") ;;
     --priority) priority="$2" ;;
@@ -63,7 +66,7 @@ errors=()
 case "$type" in
   epic) ;;
   task)
-    for field in acceptance scope verify complexity domain; do
+    for field in acceptance scope verify complexity; do
       [[ -n "${!field}" ]] || errors+=("--$field is required for tasks")
     done
     [[ -z "$complexity" || "$complexity" =~ ^(small|medium|large)$ ]] || errors+=("--complexity must be small, medium or large")
@@ -78,6 +81,35 @@ for ref in "$parent" "${after[@]}"; do
   [[ -z "$ref" ]] || bd show "$ref" --json >/dev/null 2>&1 || errors+=("no bead $ref")
 done
 
+# A task added under an epic that has already started integrating (or finished)
+# can merge after the epic branch is gone, or never be scheduled at all: decision 1.
+integration_id=""
+if [[ -n "$parent" ]] && bd show "$parent" --json >/dev/null 2>&1; then
+  parent_json=$(bd show "$parent" --json | jq '.[0]')
+  if [[ "$(jq -r '.issue_type' <<<"$parent_json")" == epic ]]; then
+    epic_id="$parent"
+    epic_json="$parent_json"
+  else
+    epic_id=$(bd list --all --limit 0 --json | "$tasks_py" epic "$parent")
+    epic_json=""
+    [[ -z "$epic_id" ]] || epic_json=$(bd show "$epic_id" --json 2>/dev/null | jq '.[0]')
+  fi
+  if [[ -n "$epic_id" ]]; then
+    if [[ "$(jq -r '.status' <<<"$epic_json")" == closed ]]; then
+      errors+=("epic $epic_id is closed; create the task without --parent or under a new epic")
+    else
+      integration_id=$(jq -r '.metadata.dispatch_integration_task // empty' <<<"$epic_json")
+      if [[ -n "$integration_id" ]]; then
+        integration_status=$(bd show "$integration_id" --json 2>/dev/null | jq -r '.[0].status // empty')
+        if [[ "$integration_status" != open ]]; then
+          errors+=("epic $epic_id is already integrating; create the task without --parent or under a new epic")
+          integration_id=""
+        fi
+      fi
+    fi
+  fi
+fi
+
 if [[ ${#errors[@]} -gt 0 ]]; then
   printf 'error: %s\n' "${errors[@]}" >&2
   usage >&2
@@ -85,9 +117,9 @@ if [[ ${#errors[@]} -gt 0 ]]; then
 fi
 
 metadata=$(jq -cn --arg scope "$scope" --arg verify "$verify" --arg complexity "$complexity" \
-  --arg domain "$domain" --arg design "$design" --arg agent "$agent" --arg model "$model" --arg effort "$effort" \
+  --arg design "$design" --arg agent "$agent" --arg model "$model" --arg effort "$effort" \
   --arg review "$review" \
-  '{scope: $scope, verify: $verify, complexity: $complexity, domain: $domain, design: $design,
+  '{scope: $scope, verify: $verify, complexity: $complexity, design: $design,
     execution_agent_type: $agent, execution_suggested_model: $model, execution_reasoning_effort: $effort,
     review: $review}
    | with_entries(select(.value != ""))')
@@ -97,12 +129,14 @@ args=(create "$title" --type "$type" --description "$description" --priority "$p
 [[ -n "$parent" ]] && args+=(--parent "$parent")
 [[ -n "$acceptance" ]] && args+=(--acceptance "$acceptance")
 [[ -n "$design" ]] && args+=(--spec-id "$design")
+[[ ${#after[@]} -eq 0 ]] || args+=(--deps "$(IFS=,; echo "${after[*]}")")
 
 id=$(bd "${args[@]}") || { echo "error: bd create failed" >&2; exit 1; }
 
-for dep in "${after[@]}"; do
-  bd dep add "$id" "$dep" >/dev/null || { echo "error: created $id but could not make it wait for $dep" >&2; exit 1; }
-done
+if [[ -n "$integration_id" ]]; then
+  bd dep add "$integration_id" "$id" >/dev/null \
+    || { echo "error: created $id but could not make $integration_id wait for it" >&2; exit 1; }
+fi
 
 line="created $id $type \"$title\""
 [[ ${#after[@]} -gt 0 ]] && line+=" after ${after[*]}"
