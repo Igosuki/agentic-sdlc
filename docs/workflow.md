@@ -63,17 +63,17 @@ A worker is one headless Claude Code session, running in one task's worktree, th
 
 1. **Start:** `run-task.sh` claims the task. In the same update it records the session id, base branch, branch, host and start time. It then creates the worktree with `wt switch --create`, and starts `claude -p` detached with `setsid`, so the worker outlives whoever dispatched it.
 2. **Implement:** the worker implements the task, or hands it to an installed agent, as your configuration decides. It commits, and reviews the change when it judges that worthwhile.
-3. **Finish:** the worker runs `finish-task.sh`. While holding the merge queue of its base branch, the script:
+3. **Finish:** the worker runs `finish-task.sh`, which:
    - checks that work is committed and no tracked file is left modified
    - reviews the change, per the task's review level (below)
-   - rebases onto the base
-   - runs the verify command
-   - runs the project's own pre-merge checks and fast-forwards the base
+   - takes the merge queue of the base branch, then rebases onto the base, runs the verify command, runs the project's own pre-merge checks and fast-forwards the base
    - closes the task
+
+   The review comes before the queue, so a slow review doesn't hold up merges of sibling tasks.
 
    If a step fails, it prints the reason, and the worker fixes the problem, for example by resolving a conflict with a sibling's change, and runs it again.
 4. **Can't finish:** the worker comments on the task saying what's missing, and stops.
-5. **Needs a person:** some problems aren't the worker's to fix — the project's pre-merge checks aren't approved on this machine, or (see Review levels) a human review is pending. `finish-task.sh` exits 3, the worker records why with `bd comments add` and stops; nothing else needs to happen, since `/sdlc:dispatch` and `resume-reviewed.sh` pick the task back up once a person has acted.
+5. **Needs a person:** some problems aren't the worker's to fix: the project's pre-merge checks aren't approved on this machine, or a human review is pending (see review levels). `finish-task.sh` exits 3, the worker records why with `bd comments add` and stops; nothing else needs to happen, since `/sdlc:dispatch` and `resume-reviewed.sh` pick the task back up once a person has acted.
 6. **Record:** when the process ends, `record-task.sh` records the attempt and removes the worktree of a merged task; a task waiting on a human review keeps its worktree.
 
 ## Review levels
@@ -81,14 +81,14 @@ A worker is one headless Claude Code session, running in one task's worktree, th
 Each task has a review level, `--review none|agent|human` on `create-task.sh`, defaulting to `bd config custom.dispatch.review` (itself defaulting to `none`). `finish-task.sh` enforces it, after the committed check and before the merge:
 
 - **`none`:** no review, straight to merging.
-- **`agent`:** a separate reviewer session (an installed `reviewer` agent if there is one, otherwise a plain Sonnet session) reviews the diff against the task's acceptance and scope. On approval, the merge continues. On requested changes, `finish-task.sh` exits 1 with the findings, the worker fixes them and runs it again — up to 3 rounds, after which it exits 3: a person is needed.
+- **`agent`:** a separate reviewer session (an installed `reviewer` agent if there is one, otherwise a plain Sonnet session) reviews the diff against the task's acceptance and scope. On approval, the merge continues. On requested changes, `finish-task.sh` exits 1 with the findings, the worker fixes them and runs it again. After 3 rounds it exits 3: a person is needed.
 - **`human`:** a gate (`bd gate create --type=human`) blocks the task, `dispatch_state` becomes `awaiting-review`, and `finish-task.sh` exits 3. The worker stops. Once a person reviews the diff (`git diff <base>...<branch>` in the task's worktree) and runs `bd gate resolve <gate>`, `resume-reviewed.sh` (run by `watch.sh`, after `close-prs.sh`) resumes the worker to read the review's comments and continue.
 
 A task is re-reviewed only when its diff changes: `finish-task.sh` compares a stable patch id (`git patch-id`) against the one last approved, so re-running it after a no-op doesn't ask for another round.
 
 Hooks keep the worker on this path (see [configuration](configuration.md#hooks)):
 - **SessionStart** restates the lifecycle after a resume or a compaction.
-- **PreToolUse** denies `bd close`, `wt merge` and `git push` outside `finish-task.sh`, and denies `bd gate resolve`/`bd gate close` and setting `review` or `dispatch_review*` metadata — only a person, or `finish-task.sh` itself, moves a review forward.
+- **PreToolUse** denies `bd close`, `wt merge` and `git push` outside `finish-task.sh`, and denies `bd gate resolve`/`bd gate close` and setting `review` or `dispatch_review*` metadata. Only a person, or `finish-task.sh` itself, moves a review forward.
 - **Stop** blocks the first attempt to end while the task is open and the worker hasn't commented.
 
 Setting `execution_agent_type` on a task makes the worker session run as that agent. That agent's frontmatter then picks the model.
