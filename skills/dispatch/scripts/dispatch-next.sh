@@ -5,7 +5,7 @@ usage() {
   cat <<'EOF2'
 Usage: dispatch-next.sh [--epic EPIC] [--parallel N]
 
-Starts the next ready tasks in work order (next-tasks.sh) with run-task.sh,
+Starts the next ready tasks in work order (next-tasks.py) with run-task.sh,
 until this machine runs N workers (default: settings.sh parallel).
 
 Prints run-task.sh's lines, "not started <task>: <reason>" for a task that
@@ -33,7 +33,7 @@ parallel=${parallel:-$("$dir/settings.sh" parallel)}
 running=$("$dir/workers.sh" --alive-count)
 filter=()
 [[ -z "$epic" ]] || filter=(--epic "$epic")
-for task in $("$dir/next-tasks.sh" --ids "${filter[@]}"); do
+for task in $("$dir/next-tasks.py" --ids "${filter[@]}"); do
   (( running < parallel )) || break
   if out=$("$dir/run-task.sh" "$task" 2>&1); then
     echo "$out"

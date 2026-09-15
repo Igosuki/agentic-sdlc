@@ -11,7 +11,7 @@ The facts about other harnesses below come from their documentation and source c
 | Start a worker | `run-task.sh` | `claude -p --session-id <uuid> --permission-mode auto --output-format stream-json --verbose --forward-subagent-text [--agent \| --model] [--effort] --plugin-dir` |
 | Resume a worker | `resume-task.sh` | `claude -p --resume <uuid>` in the same worktree |
 | Know it is alive | `workers.sh`, `watch.sh`, `finish-task.sh` | `pgrep` on the session id in the command line |
-| Read the outcome | `record-task.sh`, `logs.sh` | stream-json lines: `result` (`total_cost_usd`, `num_turns`, `is_error`, `modelUsage`), `assistant` and `user` messages, `Agent` tool calls |
+| Read the outcome | `record-task.sh`, `logs.py` | stream-json lines: `result` (`total_cost_usd`, `num_turns`, `is_error`, `modelUsage`), `assistant` and `user` messages, `Agent` tool calls |
 | Keep the worker on track | `hooks/` | SessionStart `additionalContext`, PreToolUse `permissionDecision: deny`, Stop `decision: block` |
 | Skills | `skills/*/SKILL.md` | Claude Code skill frontmatter: `model`, `allowed-tools`, `` !`command` `` injection, `${CLAUDE_SKILL_DIR}` |
 | Supervisor events | `skills/dispatch` | the Monitor tool running `watch.sh` |
@@ -68,7 +68,7 @@ sdlc can already run workers on Ollama through Claude Code: set those variables 
 A first step, not built yet (see the [roadmap](roadmap.md)):
 - a `harness` setting, `claude` by default, or `codex` or `opencode`
 - each start, resume and read-outcome step moves into a small adapter script per harness under `skills/dispatch/harnesses/<name>/`, with `start.sh`, `resume.sh`, `result.sh` and `alive.sh`
-- `record-task.sh` and `logs.sh` read a common summary that the adapters produce, instead of Claude's stream-json directly
+- `record-task.sh` and `logs.py` read a common summary that the adapters produce, instead of Claude's stream-json directly
 - hooks are ported per harness: shell hooks for Codex, a TypeScript plugin for OpenCode
 
 The planning skills and the supervisor would stay on Claude Code at first. Workers are where cheaper or local models pay off most.
