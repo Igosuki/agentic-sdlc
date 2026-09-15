@@ -48,9 +48,9 @@ Create each child, in dependency order:
 
 ```bash
 ${CLAUDE_SKILL_DIR}/../create-task/scripts/create-task.sh --parent <bead-id> \
-  --title "<title>" --description "<details>" --acceptance "<checks>" \
-  --scope "<path/,other/path>" --verify "<command>" \
-  --complexity small|medium|large --domain <domain> \
+  --title '<title>' --description '<details>' --acceptance '<checks>' \
+  --scope '<path/,other/path>' --verify '<command>' \
+  --complexity small|medium|large \
   [--after <id>]... [--design <doc>] [--review none|agent|human]
 ```
 

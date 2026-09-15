@@ -13,7 +13,6 @@
 | `scope` | metadata | comma-separated path prefixes the task changes |
 | `verify` | metadata | command that exits 0 when the acceptance is met |
 | `complexity` | metadata | `small`, `medium` or `large` |
-| `domain` | metadata | for example `frontend`, `backend`, `infra` |
 | `design` | metadata, and the spec id | the design document the task comes from |
 | `review` | metadata | `none`, `agent` or `human`: review level before merging, default `bd config custom.dispatch.review` (itself `none`) |
 | dependencies | `blocks` edges | tasks this one waits for (`--after`) |
