@@ -52,6 +52,8 @@ Use `bd` directly for fixes the script doesn't cover.
 
 ## 3. Show and confirm
 
+Run `bd swarm validate <epic>` on the epic the bead belongs to (or on the bead itself, if it is an epic), and fix what it reports.
+
 Show `bd list --parent <bead-id> --pretty`.
 
 - **If you can ask the user:** wait for approval and apply any changes they request.

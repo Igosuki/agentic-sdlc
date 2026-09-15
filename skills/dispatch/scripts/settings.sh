@@ -11,6 +11,8 @@ Prints the dispatch settings as "key=value" lines, or the value of one key.
                .claude/sdlc.local.md in the main checkout (default 2)
   design_dir   where sdlc:design writes documents, from the same frontmatter (no default:
                the design skill falls back to the repository's convention, then docs/design)
+  workflow     "build" routes new work in this project to sdlc:build (SessionStart hook);
+               from the same frontmatter, no default
   integration  direct or epic-merge, from bd config custom.dispatch.integration (default direct)
   target       branch tasks end up in, from bd config custom.dispatch.target (default main)
 
@@ -18,6 +20,7 @@ Example .claude/sdlc.local.md:
   ---
   parallel: 3
   design_dir: docs/specs
+  workflow: build
   ---
 
 Exit codes: 0 printed, 2 unknown key.
@@ -43,12 +46,13 @@ bd_setting() {
 
 parallel=$(local_setting parallel)
 design_dir=$(local_setting design_dir)
+workflow=$(local_setting workflow)
 integration=$(bd_setting integration)
 target=$(bd_setting target)
-declare -A values=([parallel]="${parallel:-2}" [design_dir]="$design_dir" [integration]="${integration:-direct}" [target]="${target:-main}")
+declare -A values=([parallel]="${parallel:-2}" [design_dir]="$design_dir" [workflow]="$workflow" [integration]="${integration:-direct}" [target]="${target:-main}")
 
 if [[ $# -eq 0 ]]; then
-  for key in parallel design_dir integration target; do echo "$key=${values[$key]}"; done
+  for key in parallel design_dir workflow integration target; do echo "$key=${values[$key]}"; done
 elif [[ -n "${values[$1]+set}" ]]; then
   echo "${values[$1]}"
 else

@@ -1,0 +1,14 @@
+{
+  "description": "Keep dispatched workers on their task's lifecycle, and route new work to sdlc:build in projects that opt in",
+  "hooks": {
+    "SessionStart": [
+      {"hooks": [{"type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/hooks/session-start.sh"}]}
+    ],
+    "PreToolUse": [
+      {"matcher": "Bash", "hooks": [{"type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/hooks/worker-guard.sh"}]}
+    ],
+    "Stop": [
+      {"hooks": [{"type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/hooks/worker-stop.sh"}]}
+    ]
+  }
+}

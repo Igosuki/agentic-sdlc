@@ -42,7 +42,7 @@ Run `${CLAUDE_SKILL_DIR}/scripts/dispatch-next.sh`. It starts the next ready tas
 ## 4. Follow
 
 Watch with the Monitor tool, `persistent: true`, command `${CLAUDE_SKILL_DIR}/scripts/watch.sh`. A headless session keeps running while the watch lasts. Each line is an event:
-- `ready <task>` or `ended <task> merged`: run `dispatch-next.sh`. Say one short line at most.
+- `ready <task>`, `ended <task> merged` or `ended <task> pr-opened`: run `dispatch-next.sh`. Say one short line at most. For `pr-opened`, give the pull request's URL (`dispatch_pr` on the task).
 - `ended <task> stopped` or `ended <task> failed`: handle it as in step 2, and tell the user.
 - `crashed <task>`: handle it as in step 2.
 - `closed <epic>`: tell the user.

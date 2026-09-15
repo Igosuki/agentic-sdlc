@@ -96,6 +96,10 @@ while IFS= read -r task; do
   else
     comment=$(bd comments "$id" --json 2>/dev/null | jq -r 'last | .text // empty' 2>/dev/null | tr '\n' ' ' | cut -c1-300)
     echo "$id  $state  on $(get .metadata.dispatch_host)  worktree ${wt_path:-missing}  \"$(get .title)\""
-    echo "  last comment: ${comment:-none}"
+    if [[ "$state" == pr-opened ]]; then
+      echo "  pull request: $(get .metadata.dispatch_pr), waiting for its merge"
+    else
+      echo "  last comment: ${comment:-none}"
+    fi
   fi
 done <<<"$tasks"

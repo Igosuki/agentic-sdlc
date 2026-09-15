@@ -108,6 +108,8 @@ ${CLAUDE_PLUGIN_ROOT}/skills/create-task/scripts/create-task.sh --parent sdlc-a1
 
 ## 3. Show and confirm
 
+For each epic you created, run `bd swarm validate <epic>`. It reports dependency cycles, tasks nothing leads to, and parts of the graph that aren't connected. Fix what it reports, with `bd` or the script, before going on.
+
 Show the graph you created: `bd list --parent <id> --pretty` for each top-level bead.
 
 - **If you can ask the user:** wait for approval. Apply any requested changes with `create-task.sh` or `bd`.

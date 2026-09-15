@@ -19,13 +19,16 @@ bd config custom.dispatch.target, else main.
               An epic's first dispatch creates that branch and an integration
               task "Integrate <epic-id> into <target>", which waits for the
               epic's other tasks and merges the epic branch into the target.
+  epic-pr     like epic-merge, but the integration task pushes the epic branch and
+              opens a pull request; the epic closes once the PR is merged (a gh:pr gate)
 
 Worker options come from the task's metadata: execution_agent_type (--agent),
 execution_suggested_model (--model, default sonnet, ignored with an agent),
 execution_reasoning_effort (--effort).
 
 Sets on the task: dispatch_state=running, dispatch_session, dispatch_host,
-dispatch_base, dispatch_branch. The worker log is .git/sdlc/logs/<task>-<session>.jsonl.
+dispatch_base, dispatch_branch, dispatch_started. The worker runs with DISPATCH_TASK=<task>
+and this plugin loaded, so its hooks keep it on the task's lifecycle. The worker log is .git/sdlc/logs/<task>-<session>.jsonl.
 Prints: "started <task> <worktree> <log>".
 Exit codes: 0 started, 1 could not start, 2 invalid arguments or task not dispatchable.
 EOF
@@ -60,9 +63,8 @@ mode=${mode:-direct}
 
 errors=()
 case "$mode" in
-  direct|epic-merge) ;;
-  epic-pr) errors+=("integration mode epic-pr is not supported yet") ;;
-  *) errors+=("unknown integration mode $mode (direct, epic-merge)") ;;
+  direct|epic-merge|epic-pr) ;;
+  *) errors+=("unknown integration mode $mode (direct, epic-merge, epic-pr)") ;;
 esac
 [[ "$(get "$task" .issue_type)" != epic ]] || errors+=("$id is an epic: dispatch its tasks")
 [[ "$(get "$task" .status)" == open ]] || errors+=("$id is $(get "$task" .status), expected open")
@@ -73,13 +75,17 @@ git rev-parse --verify --quiet "refs/heads/$target" >/dev/null || errors+=("no b
 if [[ "$role" == integration ]]; then
   pending=$(children "$epic" | jq -r --arg id "$id" '[.[] | select(.id != $id and .status != "closed") | .id] | join(" ")')
   [[ -z "$pending" ]] || errors+=("$id integrates $epic, whose other tasks aren't closed: $pending")
+  if [[ "$mode" == epic-pr ]]; then
+    git remote get-url origin >/dev/null 2>&1 || errors+=("epic-pr mode needs a git remote named origin")
+    command -v gh >/dev/null || errors+=("epic-pr mode needs the gh CLI")
+  fi
 fi
 if [[ ${#errors[@]} -gt 0 ]]; then
   printf 'error: %s\n' "${errors[@]}" >&2
   exit 2
 fi
 
-if [[ "$mode" == epic-merge && -z "$(get "$epic_bead" .metadata.dispatch_branch)" ]]; then
+if [[ "$mode" == epic-* && -z "$(get "$epic_bead" .metadata.dispatch_branch)" ]]; then
   git rev-parse --verify --quiet "refs/heads/$epic" >/dev/null || git branch "$epic" "$target"
   "$dir/merge-queue.sh" ensure "$epic" >/dev/null
   integration=$(bd create "Integrate $epic into $target" --parent "$epic" --type task \
@@ -95,7 +101,7 @@ fi
 
 if [[ "$role" == integration ]]; then
   base=$target branch=$epic
-elif [[ "$mode" == epic-merge ]]; then
+elif [[ "$mode" == epic-* ]]; then
   base=$epic branch=$id
 else
   base=$target branch=$id
@@ -108,7 +114,7 @@ mkdir -p "$logs"
 log="$logs/$id-$session.jsonl"
 bd update "$id" --claim --set-metadata dispatch_state=running --set-metadata "dispatch_session=$session" \
   --set-metadata "dispatch_host=$(uname -n)" --set-metadata "dispatch_base=$base" \
-  --set-metadata "dispatch_branch=$branch" >/dev/null \
+  --set-metadata "dispatch_branch=$branch" --set-metadata "dispatch_started=$(date -u +%FT%TZ)" >/dev/null \
   || { echo "error: could not claim $id" >&2; exit 1; }
 
 if [[ "$role" == integration ]]; then
@@ -122,7 +128,18 @@ wt_path=$(wt list --format json </dev/null 2>/dev/null | jq -r --arg b "$branch"
 [[ -n "$wt_path" && -d "$wt_path" ]] || { echo "error: no worktree for branch $branch" >&2; exit 1; }
 
 finish="$dir/finish-task.sh"
-if [[ "$role" == integration ]]; then
+if [[ "$role" == integration && "$mode" == epic-pr ]]; then
+  prompt="Open a pull request for epic $epic ($(get "$epic_bead" .title)) into $target.
+
+Every other task of the epic is closed and merged into branch $epic, which is checked out in this worktree (bd children $epic lists them). The branch may need code changes first: $target may have moved, or the tasks may not work together.
+
+You own this until it is closed:
+1. Run: $finish $id
+   It rebases $epic onto $target, runs the verify command of every task in the epic, pushes $epic, opens the pull request, and closes this task. The epic closes once the pull request is merged.
+2. If it reports a problem (a conflict, a failing verify), fix the code, commit, and run it again.
+3. If you can't finish, record what's missing with: bd comments add $id \"<what's missing>\", then stop.
+Don't push, merge or close anything by other means."
+elif [[ "$role" == integration ]]; then
   prompt="Merge epic $epic ($(get "$epic_bead" .title)) into $target.
 
 Every other task of the epic is closed and merged into branch $epic, which is checked out in this worktree (bd children $epic lists them). Merging may require editing the code: $target may have moved, or the tasks may not work together.
@@ -162,7 +179,8 @@ This is your own git worktree, on branch $branch, created from $base. You own th
 Don't merge or close the task by other means."
 fi
 
-worker=(claude -p --session-id "$session" --permission-mode auto --output-format stream-json --verbose --forward-subagent-text
+plugin_root=$(cd "$dir/../../.." && pwd)
+worker=(env "DISPATCH_TASK=$id" claude -p --session-id "$session" --plugin-dir "$plugin_root" --permission-mode auto --output-format stream-json --verbose --forward-subagent-text
   --allowedTools "Bash($finish *)")
 agent=$(get "$task" .metadata.execution_agent_type)
 model=$(get "$task" .metadata.execution_suggested_model)

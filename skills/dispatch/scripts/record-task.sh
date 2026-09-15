@@ -9,7 +9,8 @@ Records a worker's attempt once its process has ended. Run by the wrapper that
 run-task.sh and resume-task.sh start, or by hand if that wrapper died.
 
 From the result lines of the worker log, it sets on the task:
-  dispatch_state   merged (task closed), failed (session ended in error), or stopped
+  dispatch_state   merged (task closed), pr-opened (an epic-pr integration task opened its PR),
+                   failed (session ended in error), or stopped
   dispatch_cost    the session's cost, over every run (a resume is a new run)
   dispatch_model, dispatch_agents
 and creates a closed event bead dispatch.<state> targeting the task, with the
@@ -58,7 +59,9 @@ agents=$( { [[ -z "$agent" ]] || echo "$agent"
     | .input.subagent_type // "general-purpose"' "$log" 2>/dev/null; } | sort -u | paste -sd, -)
 summary=$(jq -r '.result // empty' <<<"$last")
 
-if [[ "$(get .status)" == closed ]]; then
+if [[ -n "$(get .metadata.dispatch_pr)" ]]; then
+  state=pr-opened
+elif [[ "$(get .status)" == closed ]]; then
   state=merged
 elif [[ "$(jq -r .is_error <<<"$last")" == true ]]; then
   state=failed
@@ -84,7 +87,7 @@ event=$(bd create "$id $state" --type event --event-target "$id" --event-categor
 bd close "$event" >/dev/null
 
 note=""
-if [[ "$state" == merged && -n "$branch" ]]; then
+if [[ "$state" == merged || "$state" == pr-opened ]] && [[ -n "$branch" ]]; then
   if wt remove "$branch" </dev/null >/dev/null 2>"$log.remove"; then
     # A task branch rebased into an epic branch isn't an ancestor of it, so wt keeps the branch.
     ! git rev-parse --verify --quiet "refs/heads/$branch" >/dev/null || git branch -D "$branch" >/dev/null

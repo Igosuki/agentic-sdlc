@@ -13,7 +13,10 @@ queue of the task's base branch:
      every task in the epic)
   4. fast-forwards the base to the branch
 Then closes the task, and closes the epic when it is done: after its last task
-in direct mode, after its integration task in epic-merge mode.
+in direct mode, after its integration task in epic-merge mode. In epic-pr mode,
+the integration task pushes the epic branch and opens a pull request instead of
+step 4, and gates this task on the pull request (gh:pr); close-prs.sh closes the task
+and the epic once the pull request is merged.
 
 On a problem it prints what to fix and exits 1: fix it, commit, run it again.
 The worktree is removed later, by record-task.sh, once the worker has ended.
@@ -42,12 +45,13 @@ fi
 wt_path=$(wt list --format json </dev/null 2>/dev/null | jq -r --arg b "$branch" '.items[] | select(.branch == $b) | .worktree.path // empty')
 [[ -n "$wt_path" ]] || { echo "error: no worktree for branch $branch" >&2; exit 2; }
 
-epic="" parent=$(get "$task" .parent)
+epic="" epic_bead="" parent=$(get "$task" .parent)
 while [[ -n "$parent" ]]; do
   bead=$(show "$parent") || break
-  if [[ "$(get "$bead" .issue_type)" == epic ]]; then epic="$parent"; break; fi
+  if [[ "$(get "$bead" .issue_type)" == epic ]]; then epic="$parent" epic_bead="$bead"; break; fi
   parent=$(get "$bead" .parent)
 done
+mode=$( [[ -n "$epic_bead" ]] && get "$epic_bead" .metadata.dispatch_integration || true)
 
 if [[ "$role" == integration ]]; then
   verifies=$(bd list --parent "$epic" --all --limit 0 --json |
@@ -75,6 +79,28 @@ for ((i = 0; i < $(jq length <<<"$verifies"); i++)); do
   out=$(cd "$wt_path" && timeout 600 bash -c "$check" 2>&1) \
     || problem "verify for $check_id failed after rebasing onto $base: $(tail -5 <<<"$out")"
 done
+
+if [[ "$role" == integration && "$mode" == epic-pr ]]; then
+  git -C "$wt_path" push --force-with-lease -u origin "$branch" >/dev/null 2>&1 \
+    || problem "pushing $branch to origin failed: $(git -C "$wt_path" push --force-with-lease -u origin "$branch" 2>&1 | tail -3)"
+  if ! url=$(cd "$wt_path" && gh pr view "$branch" --json url --jq .url 2>/dev/null); then
+    body="Epic $epic: $(get "$epic_bead" .title)
+
+$(get "$epic_bead" .description)
+
+Tasks:
+$(bd list --parent "$epic" --all --limit 0 --json | jq -r --arg id "$id" '.[] | select(.id != $id and .issue_type != "event") | "- \(.id): \(.title)"')"
+    url=$(cd "$wt_path" && gh pr create --base "$base" --head "$branch" --title "$(get "$epic_bead" .title)" --body "$body" 2>&1 | tail -1) \
+      || problem "opening the pull request failed: $url"
+  fi
+  number=$(cd "$wt_path" && gh pr view "$branch" --json number --jq .number 2>/dev/null) || number="${url##*/}"
+  # Beads doesn't let a gate block an epic, so the gate blocks this task, which close-prs.sh
+  # closes, with its epic, once the gate resolves.
+  bd gate create --type=gh:pr --blocks "$id" --await-id="$number" --reason "pull request $url merged" >/dev/null
+  bd update "$id" --set-metadata "dispatch_pr=$url" --set-metadata dispatch_state=pr-opened >/dev/null
+  echo "opened $url for $epic; $id and $epic close once the pull request is merged"
+  exit 0
+fi
 
 merge_log=$(mktemp)
 wt merge "$base" -C "$wt_path" --no-squash --no-rebase --stage none --no-remove --format json </dev/null >/dev/null 2>"$merge_log" \
