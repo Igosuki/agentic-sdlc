@@ -22,7 +22,7 @@ docs/                  this documentation
 ## Conventions
 
 - **One skill at a time, scripts only when a skill needs them.** Scripts live in `skills/<skill>/scripts/`.
-- **Bash for command-line work, `jq` for JSON.** Python only once the logic gets complex.
+- **Bash + `jq`** for a script that runs commands and reads a few fields from JSON. **Python 3.9+, standard library only,** for a script that walks the task graph, sorts, totals, keeps state across rounds or renders logs. Shared task-graph logic lives in `skills/dispatch/scripts/tasks.py`, reached the way `status` and `logs` already call dispatch's scripts. Bead data is never passed as a command-line argument: Linux caps a single argument at 128 KiB, so scripts read `bd`'s JSON through a pipe instead.
 - **Scripts explain themselves:** `--help` prints the usage, and invalid input lists every problem, prints the usage and exits 2. Skills don't document the scripts they call.
 - **Skills call scripts** through `${CLAUDE_SKILL_DIR}` or `${CLAUDE_PLUGIN_ROOT}`, pre-approved in `allowed-tools`, so the script's source never enters the context.
 - **Headless-aware skills:** ask with AskUserQuestion when it is available. Otherwise decide, and record the assumption. Never ask in plain text and stop.
