@@ -18,7 +18,8 @@ what is missing, and changes a setting only when an option asks for it.
      touching a key that is already there
 
 Prints one line per step, starting with "created", "set", "kept" or "added".
-Exit codes: 0 done, 1 a step failed, 2 invalid arguments or not a git repository.
+Exit codes: 0 done, 1 a step failed, 2 invalid arguments, not a git repository,
+detached HEAD, or a repository with no commits.
 EOF2
 }
 
@@ -47,14 +48,22 @@ errors=()
 for entry in "${pre_merge[@]}"; do
   [[ "$entry" =~ ^[A-Za-z0-9_-]+=.+$ ]] || errors+=("--pre-merge must be NAME=COMMAND, got: $entry")
 done
-root=$(git rev-parse --show-toplevel 2>/dev/null) || errors+=("not inside a git repository (run git init first)")
+if common=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null); then
+  root=$(dirname "$common")
+else
+  errors+=("not inside a git repository (run git init first)")
+fi
 if [[ ${#errors[@]} -gt 0 ]]; then
   printf 'error: %s\n' "${errors[@]}" >&2
   exit 2
 fi
 cd "$root"
+git rev-parse --verify --quiet HEAD >/dev/null || { echo "error: repository has no commits yet (make an initial commit, then run init again)" >&2; exit 2; }
+current_branch=$(git branch --show-current)
+[[ -n "$current_branch" ]] || { echo "error: detached HEAD (check out a branch first)" >&2; exit 2; }
 [[ -z "$target" ]] || git rev-parse --verify --quiet "refs/heads/$target" >/dev/null || { echo "error: no branch $target" >&2; exit 2; }
 
+command -v bd >/dev/null 2>&1 || { echo "error: bd is not installed (run /sdlc:setup)" >&2; exit 1; }
 if bd where >/dev/null 2>&1; then
   echo "kept beads database ($(bd where 2>/dev/null | head -1))"
 else
@@ -70,7 +79,7 @@ for key in integration target; do
     echo "kept custom.dispatch.$key=$current"
     continue
   fi
-  [[ -n "$wanted" ]] || { [[ "$key" == integration ]] && wanted=direct || wanted=$(git branch --show-current); }
+  [[ -n "$wanted" ]] || { [[ "$key" == integration ]] && wanted=direct || wanted=$current_branch; }
   bd config set "custom.dispatch.$key" "$wanted" >/dev/null
   echo "set custom.dispatch.$key=$wanted"
 done
@@ -83,6 +92,7 @@ if [[ ! -f "$settings" ]]; then
 fi
 set_key() { # key value; value "none" removes the key
   local key=$1 value=$2 tmp
+  [[ "$(head -n1 "$settings")" == "---" ]] || { echo "error: $settings has no frontmatter, refusing to edit" >&2; exit 1; }
   tmp=$(mktemp)
   awk -v key="$key" -v value="$value" '
     NR == 1 && $0 == "---" { infm = 1; print; next }
@@ -90,6 +100,11 @@ set_key() { # key value; value "none" removes the key
     infm && index($0, key ":") == 1 { if (value != "none") print key ": " value; done = 1; next }
     { print }
   ' "$settings" > "$tmp" && mv "$tmp" "$settings"
+  if [[ "$value" == "none" ]]; then
+    ! grep -qE "^${key}:" "$settings" || { echo "error: failed to remove $key from $settings" >&2; exit 1; }
+  else
+    grep -qxF "$key: $value" "$settings" || { echo "error: failed to set $key in $settings" >&2; exit 1; }
+  fi
   echo "set $key: $value in $settings"
 }
 [[ -z "$parallel" ]] || set_key parallel "$parallel"
@@ -97,6 +112,7 @@ set_key() { # key value; value "none" removes the key
 [[ -z "$workflow" ]] || set_key workflow "$workflow"
 
 touch .gitignore
+[[ ! -s .gitignore || -z "$(tail -c1 .gitignore)" ]] || echo >> .gitignore
 for line in '.claude/*.local.md' '.worktrees/'; do
   if grep -qxF "$line" .gitignore; then
     echo "kept .gitignore entry $line"
