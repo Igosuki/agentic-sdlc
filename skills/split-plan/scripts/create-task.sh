@@ -79,7 +79,7 @@ metadata=$(jq -cn --arg scope "$scope" --arg verify "$verify" --arg complexity "
    | with_entries(select(.value != ""))')
 
 args=(create "$title" --type "$type" --description "$description" --priority "$priority"
-  --labels sdlc --metadata "$metadata" --silent)
+  --metadata "$metadata" --silent)
 [[ -n "$parent" ]] && args+=(--parent "$parent")
 [[ -n "$acceptance" ]] && args+=(--acceptance "$acceptance")
 [[ -n "$design" ]] && args+=(--spec-id "$design")

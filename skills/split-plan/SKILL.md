@@ -86,6 +86,8 @@ The fields are split like this:
 - **Description:** what to do, the interfaces the task depends on from other tasks, and the design sections or prior-art files that matter. Implementation guidance belongs here.
 - **Acceptance:** observable checks.
 - **Verify:** one short command that exits 0 when the acceptance is met, usually the test the task itself adds, for example `node --test test/auth.test.js` or `pytest tests/auth -v`. No inline scripts.
+  - It must exercise the behaviour the acceptance describes. A syntax check or a lint alone doesn't count.
+  - It may only rely on files that exist once this task and the tasks it waits for are done.
 
 Prior art that lives outside the repository (Notion, Drive, wikis) may not be reachable by the agent that implements the task. Copy the facts the task needs into its description, along with the link.
 
