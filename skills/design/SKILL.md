@@ -4,6 +4,7 @@ description: Turn a product or feature request into a design document that remov
 argument-hint: "<what to build>"
 model: opus
 effort: high
+allowed-tools: Bash(${CLAUDE_SKILL_DIR}/../dispatch/scripts/settings.sh *)
 ---
 
 # Design
@@ -16,7 +17,7 @@ Be precise only where two people implementing different parts could otherwise bu
 
 ## Reading
 
-Don't read files, documents or external sources yourself. Delegate every read to a subagent, then think over what it returns.
+Run `bd` commands yourself. For everything else — files, documents and external sources — don't read them yourself: delegate the read to a subagent, then think over what it returns. If a `bd` result is large (a long `bd list` or a `bd show` with a long description or many comments), delegate reading that result too, instead of loading it into your own context.
 - Pick a reading agent from the available agent types: prefer one made for reading or summarizing large content (for example `bulk-reader`); otherwise use `Explore` with `model: haiku`.
 - Tell it exactly what to return: paths, contracts and data shapes verbatim, build and test commands, and anything that conflicts with the request.
 - Run independent reads in parallel.
@@ -30,7 +31,7 @@ Prior art is anything that already settles part of the request: earlier designs,
 **Local sources**, always allowed:
 - Earlier designs. `docs/design/` is the default location. Also follow the repository's own conventions, such as `docs/adr/`, `specs/`, `rfcs/` or `design/`.
 - `README*`, other documentation, and the code the request touches: entry points, data formats, public interfaces, config, and how the project is built and tested. Skim; don't read everything.
-- Existing beads, if the repository uses beads. Read-only commands only: `bd search <terms>`, `bd list`, `bd show <id>`.
+- Existing beads, if the repository uses beads. Run them yourself; read-only commands only: `bd search <terms>`, `bd list`, `bd show <id>`.
 - Links given in the request.
 
 **External sources**, which need permission first:
@@ -43,7 +44,7 @@ Find out which ones are available. Look at the MCP tools, skills and commands in
 ### Ask before using external sources
 
 - **When you can ask:** use one AskUserQuestion (`multiSelect`) listing the external sources that look relevant to this request. For each option, say what you would look for there. Offer at most 4; group similar sources if there are more. Consult only the sources the user selects.
-- **When you cannot ask** (headless session): use the external sources the request requires.
+- **When you cannot ask** (headless session): use only the external sources the request names or links to. List the rest under Open questions and assumptions instead of consulting them.
 
 ### Record what you found
 
@@ -65,7 +66,7 @@ List the open points whose answer would change a contract, a goal or the scope. 
 
 **Where to write:**
 1. the location the request asks for; otherwise
-2. the configured design directory, if set: !`${CLAUDE_SKILL_DIR}/../dispatch/scripts/settings.sh design_dir`; otherwise
+2. the configured design directory, if set: !`v=$(${CLAUDE_SKILL_DIR}/../dispatch/scripts/settings.sh design_dir 2>/dev/null || true); echo "${v:-(not set)}"`; otherwise
 3. the repository's existing design-doc convention; otherwise
 4. `docs/design/<slug>.md`.
 
