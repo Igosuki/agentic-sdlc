@@ -16,6 +16,7 @@ cd "$repo"
 git init -q -b main
 printf '# Demo app\n\nA small demo web app.\n' > README.md
 git add README.md && git commit -q -m "Initial README"
+"$plugin_dir/skills/init/scripts/init.sh" --integration "$mode"
 echo "sandbox: $base"
 
 step() {
@@ -34,7 +35,6 @@ step 2-split-plan "--resume $planning" "/sdlc:split-plan"
 
 bd where >/dev/null 2>&1 || { echo "no beads after split-plan, stopping"; exit 1; }
 git add -A && git commit -q -m "Design and tasks" && echo "committed design and tasks"
-bd config set custom.dispatch.integration "$mode" >/dev/null
 parallel=$("$scripts/settings.sh" parallel)
 
 for round in $(seq "$max_rounds"); do
