@@ -29,13 +29,9 @@ What exists today is described in [workflow](workflow.md). This is what comes ne
 
 ## Quality
 
-- **Review before merging:**
-  - a reviewer agent run by the worker (today the worker decides)
-  - optional human gates on tasks or integration tasks
-  - QA agents checking the definition of done, security and guidelines
+- **Dedicated QA agents** checking the definition of done, security and guidelines, beyond what an `agent`-level review covers.
 - **A stopped task goes back to a person:** `bd human` to flag a decision (for example a merge that agents couldn't resolve), and a way to retry a stopped task in its kept worktree.
 - **Custom statuses** from the original design: `in_review`, `qa_testing`, `on_hold` and `archived`.
-- **Policies:** per-repository rules such as requiring a review or a human gate.
 
 ## Planning
 
@@ -48,6 +44,12 @@ What exists today is described in [workflow](workflow.md). This is what comes ne
 - **macOS support:** replace `setsid`, GNU `stat` and `date -r` with portable equivalents.
 - **A dashboard** for status, stats and logs across projects.
 - **Retention of worker logs** in `.git/sdlc/logs`.
+- **Channels** (a Claude Code research preview) as an optional event transport:
+  - an sdlc channel that the scripts push events to (a worker ending, a merge, a merged pull request), so the supervisor reacts without polling, with `watch.sh` as the fallback
+  - pairing the supervisor with the official Telegram or Discord channel, for review approvals, alerts about stopped tasks and permission prompts from a phone
+
+  Channels still need the session to be open, and during the preview a custom channel needs `--dangerously-load-development-channels`.
+- **Cleanup after a crash between merge and record:** a closed task whose attempt was never recorded keeps its worktree. The supervisor should record what it can and remove the worktree.
 
 ## From the original design
 
@@ -59,6 +61,6 @@ The first design listed agents and skills that exist today under other names:
 | worker agent, `sdlc:dispatch` | the worker session started by `run-task.sh` |
 | resolver agent, `sdlc:merge` | `finish-task.sh`, and the integration task's worker |
 | `sdlc:create-merge-queue` | `merge-queue.sh` |
-| reviewer agent, `sdlc:review` | the worker's discretionary review; a dedicated step is planned above |
+| reviewer agent, `sdlc:review` | the worker's discretionary review, plus `finish-task.sh`'s `agent`/`human` review levels; dedicated QA agents are planned above |
 | `sdlc:dedup` | planned above |
 | `sdlc:open` | `/sdlc:init` |

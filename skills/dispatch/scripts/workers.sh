@@ -12,6 +12,8 @@ Lists dispatched tasks that aren't closed, with where their worker runs:
             files, transcript, log runs and result, last events, stderr
   stopped / failed   the worker ended without closing the task; followed by
             the task's last comment
+  awaiting-review    a human review gate blocks the task; followed by the
+            gate id and the commands a person uses to review and resolve it
 
 Options:
   --epic EPIC     only tasks whose parent is EPIC
@@ -98,6 +100,12 @@ while IFS= read -r task; do
     echo "$id  $state  on $(get .metadata.dispatch_host)  worktree ${wt_path:-missing}  \"$(get .title)\""
     if [[ "$state" == pr-opened ]]; then
       echo "  pull request: $(get .metadata.dispatch_pr), waiting for its merge"
+    elif [[ "$state" == awaiting-review ]]; then
+      gate=$(get .metadata.dispatch_review_gate)
+      echo "  gate: $gate"
+      echo "  review:         git -C $wt_path diff $base...$branch"
+      echo "  request changes: bd comments add $id \"<what to change>\""
+      echo "  done:            bd gate resolve $gate"
     else
       echo "  last comment: ${comment:-none}"
     fi

@@ -137,7 +137,8 @@ You own this until it is closed:
 1. Run: $finish $id
    It rebases $epic onto $target, runs the verify command of every task in the epic, pushes $epic, opens the pull request, and closes this task. The epic closes once the pull request is merged.
 2. If it reports a problem (a conflict, a failing verify), fix the code, commit, and run it again.
-3. If you can't finish, record what's missing with: bd comments add $id \"<what's missing>\", then stop.
+3. If it says a person is needed, record it with: bd comments add $id \"<what's needed>\", then stop.
+4. If you can't finish, record what's missing with: bd comments add $id \"<what's missing>\", then stop.
 Don't push, merge or close anything by other means."
 elif [[ "$role" == integration ]]; then
   prompt="Merge epic $epic ($(get "$epic_bead" .title)) into $target.
@@ -148,7 +149,8 @@ You own this merge until it is closed:
 1. Run: $finish $id
    It rebases $epic onto $target, runs the verify command of every task in the epic, merges into $target, and closes this task and the epic.
 2. If it reports a problem (a conflict, a failing verify), fix the code, commit, and run it again.
-3. If you can't finish, record what's missing with: bd comments add $id \"<what's missing>\", then stop.
+3. If it says a person is needed, record it with: bd comments add $id \"<what's needed>\", then stop.
+4. If you can't finish, record what's missing with: bd comments add $id \"<what's missing>\", then stop.
 Don't merge or close anything by other means."
 else
   prompt="Implement task $id: $(get "$task" .title)
@@ -175,7 +177,8 @@ This is your own git worktree, on branch $branch, created from $base. You own th
 2. Review the change when you judge it worthwhile, for example with a reviewer agent, and address what matters.
 3. Run: $finish $id
    It rebases onto $base, runs the verify command, merges into $base and closes the task. If it reports a problem (a failing verify, a conflict with a sibling's change on $base), fix it, commit, and run it again. git log $base and bd show <task> explain what sibling tasks changed.
-4. If you can't finish, record what's missing with: bd comments add $id \"<what's missing>\", then stop.
+4. If it says a person is needed, record it with: bd comments add $id \"<what's needed>\", then stop.
+5. If you can't finish, record what's missing with: bd comments add $id \"<what's missing>\", then stop.
 Don't merge or close the task by other means."
 fi
 

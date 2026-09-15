@@ -8,13 +8,14 @@ Usage: watch.sh [--epic EPIC] [--interval SECONDS] [--once]
 Watches beads and the worker processes, and prints one line per change, for
 the Monitor tool:
   ready <task>                a task can be dispatched (next-tasks.sh)
-  ended <task> <state>        a worker ended: merged, pr-opened, stopped or failed
+  ended <task> <state>        a worker ended: merged, pr-opened, awaiting-review, stopped or failed
   crashed <task>              dispatch_state=running but no process runs its session
   closed <epic>               an epic was closed
   idle                        no worker runs and no task is ready; the watch ends
 
 The first round reports every ready and crashed task. Each round also runs
-bd gate check, so gates that can resolve on their own do, then close-prs.sh.
+bd gate check, so gates that can resolve on their own do, then close-prs.sh
+and resume-reviewed.sh.
 
 Options:
   --epic EPIC          only that epic's tasks
@@ -48,6 +49,7 @@ first=true
 while :; do
   bd gate check >/dev/null 2>&1 || true
   "$dir/close-prs.sh" >/dev/null 2>&1 || true
+  "$dir/resume-reviewed.sh" >/dev/null 2>&1 || true
   ready=$("$dir/next-tasks.sh" --ids "${filter[@]}")
   for task in $ready; do
     [[ -n "${seen_ready[$task]:-}" ]] || echo "ready $task"

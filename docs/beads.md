@@ -15,6 +15,7 @@
 | `complexity` | metadata | `small`, `medium` or `large` |
 | `domain` | metadata | for example `frontend`, `backend`, `infra` |
 | `design` | metadata, and the spec id | the design document the task comes from |
+| `review` | metadata | `none`, `agent` or `human`: review level before merging, default `bd config custom.dispatch.review` (itself `none`) |
 | dependencies | `blocks` edges | tasks this one waits for (`--after`) |
 
 ## Execution hints
@@ -33,7 +34,7 @@ Set by the dispatch scripts on each task. They can be queried, for example `bd l
 
 | Key | Set by | Meaning |
 |---|---|---|
-| `dispatch_state` | run, finish, record | `running`, `merged`, `pr-opened`, `stopped` or `failed` |
+| `dispatch_state` | run, finish, record | `running`, `merged`, `pr-opened`, `awaiting-review`, `stopped` or `failed` |
 | `dispatch_session` | run-task.sh | Claude session id of the worker, set before it starts |
 | `dispatch_host` | run-task.sh | machine the worker runs on |
 | `dispatch_base` | run-task.sh | branch the task merges into |
@@ -42,6 +43,11 @@ Set by the dispatch scripts on each task. They can be queried, for example `bd l
 | `dispatch_cost`, `dispatch_model`, `dispatch_agents` | record-task.sh | latest attempt: cost in USD over all runs of the session, models used, agents used |
 | `dispatch_pr` | finish-task.sh | pull request URL, in `epic-pr` mode |
 | `dispatch_role` | run-task.sh | `integration` for an epic's integration task |
+| `dispatch_review` | finish-task.sh | `approved` or `changes`, the last review verdict |
+| `dispatch_review_patch` | finish-task.sh | stable id (`git patch-id`) of the diff the verdict covers, so a later no-op re-run doesn't ask for review again |
+| `dispatch_review_rounds` | finish-task.sh | number of agent review rounds run so far (level `agent`) |
+| `dispatch_review_cost` | finish-task.sh | total USD spent on agent review sessions (level `agent`); added into `/sdlc:stats` |
+| `dispatch_review_gate`, `dispatch_review_gate_patch` | finish-task.sh | the open human review gate's id, and the patch id it covers (level `human`) |
 
 On epics: `dispatch_branch` (the epic branch), `dispatch_integration` (the mode used, which also overrides the repository's setting for that epic), and `dispatch_integration_task`.
 
@@ -50,7 +56,7 @@ Status stays standard beads:
 - `in_progress` means claimed
 - `closed` means merged
 
-A task whose worker stopped stays `in_progress`, with `dispatch_state=stopped` and a comment explaining why.
+A task whose worker stopped stays `in_progress`, with `dispatch_state=stopped` and a comment explaining why. A task waiting on a human review stays `in_progress` too, with `dispatch_state=awaiting-review` and its worktree kept.
 
 ## Event beads
 
@@ -60,7 +66,7 @@ Every worker attempt adds one closed event bead that targets the task. Metadata 
 bd list --type event --all --json | jq '.[] | select(.target == "<task>")'
 ```
 
-- `event_kind`: `dispatch.merged`, `dispatch.pr-opened`, `dispatch.stopped` or `dispatch.failed`
+- `event_kind`: `dispatch.merged`, `dispatch.pr-opened`, `dispatch.awaiting-review`, `dispatch.stopped` or `dispatch.failed`
 - `actor`: the agents or models that worked
 - `payload` (JSON): `session`, `model`, `agents`, `cost_usd`, `turns`, `duration_s`, `branch`, `base`, `host`, `result`, `log`
 - description: the worker's final message
@@ -78,14 +84,15 @@ One ephemeral bead per branch, titled `merge queue <branch>`. Its id is kept in 
 ## Gates
 
 - **`gh:pr`:** created by `finish-task.sh` in `epic-pr` mode, on the integration task.
-- **`human`:** add one yourself, to review before a task can start:
+- **`human`, added by you:** add one yourself, to review before a task can start:
   ```bash
   bd gate create --type=human --blocks <task> --reason "..."
   bd gate resolve <gate>
   ```
+- **`human`, the review gate:** for a task with `review=human`, `finish-task.sh` creates this gate itself (`dispatch_review_gate`) instead of merging, and sets `dispatch_state=awaiting-review`. Resolve it the same way, `bd gate resolve <gate>`; `resume-reviewed.sh` then picks the task back up. `workers.sh` prints the exact commands for a task waiting in this state.
 
 A gate can block a task but not an epic. `watch.sh` runs `bd gate check` on every round.
 
 ## Configuration
 
-`bd config set custom.dispatch.integration <mode>` and `bd config set custom.dispatch.target <branch>`. See [configuration](configuration.md).
+`bd config set custom.dispatch.integration <mode>`, `bd config set custom.dispatch.target <branch>` and `bd config set custom.dispatch.review <none|agent|human>`. See [configuration](configuration.md).

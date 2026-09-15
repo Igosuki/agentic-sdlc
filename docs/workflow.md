@@ -65,18 +65,30 @@ A worker is one headless Claude Code session, running in one task's worktree, th
 2. **Implement:** the worker implements the task, or hands it to an installed agent, as your configuration decides. It commits, and reviews the change when it judges that worthwhile.
 3. **Finish:** the worker runs `finish-task.sh`. While holding the merge queue of its base branch, the script:
    - checks that work is committed and no tracked file is left modified
+   - reviews the change, per the task's review level (below)
    - rebases onto the base
    - runs the verify command
-   - fast-forwards the base
+   - runs the project's own pre-merge checks and fast-forwards the base
    - closes the task
 
    If a step fails, it prints the reason, and the worker fixes the problem, for example by resolving a conflict with a sibling's change, and runs it again.
 4. **Can't finish:** the worker comments on the task saying what's missing, and stops.
-5. **Record:** when the process ends, `record-task.sh` records the attempt and removes the worktree of a merged task.
+5. **Needs a person:** some problems aren't the worker's to fix — the project's pre-merge checks aren't approved on this machine, or (see Review levels) a human review is pending. `finish-task.sh` exits 3, the worker records why with `bd comments add` and stops; nothing else needs to happen, since `/sdlc:dispatch` and `resume-reviewed.sh` pick the task back up once a person has acted.
+6. **Record:** when the process ends, `record-task.sh` records the attempt and removes the worktree of a merged task; a task waiting on a human review keeps its worktree.
+
+## Review levels
+
+Each task has a review level, `--review none|agent|human` on `create-task.sh`, defaulting to `bd config custom.dispatch.review` (itself defaulting to `none`). `finish-task.sh` enforces it, after the committed check and before the merge:
+
+- **`none`:** no review, straight to merging.
+- **`agent`:** a separate reviewer session (an installed `reviewer` agent if there is one, otherwise a plain Sonnet session) reviews the diff against the task's acceptance and scope. On approval, the merge continues. On requested changes, `finish-task.sh` exits 1 with the findings, the worker fixes them and runs it again — up to 3 rounds, after which it exits 3: a person is needed.
+- **`human`:** a gate (`bd gate create --type=human`) blocks the task, `dispatch_state` becomes `awaiting-review`, and `finish-task.sh` exits 3. The worker stops. Once a person reviews the diff (`git diff <base>...<branch>` in the task's worktree) and runs `bd gate resolve <gate>`, `resume-reviewed.sh` (run by `watch.sh`, after `close-prs.sh`) resumes the worker to read the review's comments and continue.
+
+A task is re-reviewed only when its diff changes: `finish-task.sh` compares a stable patch id (`git patch-id`) against the one last approved, so re-running it after a no-op doesn't ask for another round.
 
 Hooks keep the worker on this path (see [configuration](configuration.md#hooks)):
 - **SessionStart** restates the lifecycle after a resume or a compaction.
-- **PreToolUse** denies `bd close`, `wt merge` and `git push` outside `finish-task.sh`.
+- **PreToolUse** denies `bd close`, `wt merge` and `git push` outside `finish-task.sh`, and denies `bd gate resolve`/`bd gate close` and setting `review` or `dispatch_review*` metadata — only a person, or `finish-task.sh` itself, moves a review forward.
 - **Stop** blocks the first attempt to end while the task is open and the worker hasn't commented.
 
 Setting `execution_agent_type` on a task makes the worker session run as that agent. That agent's frontmatter then picks the model.
@@ -102,6 +114,12 @@ bd gate create --type=human --blocks <integration-task> --reason "review the epi
 ## Merge queues
 
 Every branch that tasks merge into has a queue, so merges into it happen one at a time, on every machine that shares the beads database. A queue is an ephemeral bead, which `bd ready` and `bd list` don't show. Holding it means having claimed that bead. `merge-queue.sh` creates, takes and releases queues.
+
+## Project checks
+
+`wt merge` (and, in `epic-pr` mode, `wt hook pre-merge`) runs the project's own `[pre-merge]` commands from `.config/wt.toml` before the merge lands — type checks, linters, unit tests, whatever the project decides. `/sdlc:init` proposes these from `checks.sh`'s scan of the repository (`package.json` scripts, a Makefile or justfile, `pyproject.toml`, `Cargo.toml`, `go.mod`) and adds the ones the user picks.
+
+The first time a command runs on a machine, `wt` needs a person to approve it: `wt merge` fails non-interactively, and `finish-task.sh` treats that as a person-needed problem, not a bug to fix. A person runs `wt config approvals add` once, in the main checkout, and the worker's next `finish-task.sh` run goes through. A failing check, once approved, is a normal problem: the worker fixes it and runs `finish-task.sh` again.
 
 ## Crash recovery
 

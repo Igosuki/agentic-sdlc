@@ -10,12 +10,14 @@ run-task.sh and resume-task.sh start, or by hand if that wrapper died.
 
 From the result lines of the worker log, it sets on the task:
   dispatch_state   merged (task closed), pr-opened (an epic-pr integration task opened its PR),
-                   failed (session ended in error), or stopped
+                   awaiting-review (a human review gate blocks it), failed (session ended
+                   in error), or stopped
   dispatch_cost    the session's cost, over every run (a resume is a new run)
   dispatch_model, dispatch_agents
 and creates a closed event bead dispatch.<state> targeting the task, with the
 worker's final message as its description. For a merged task it then removes
-the worktree, unless untracked files are left in it.
+the worktree, unless untracked files are left in it. A task awaiting review
+keeps its worktree.
 
 A log without a result means the worker didn't end normally: nothing is
 recorded, and the task stays dispatch_state=running, which shows as crashed.
@@ -64,6 +66,8 @@ if [[ -n "$(get .metadata.dispatch_pr)" ]]; then
   state=pr-opened
 elif [[ "$(get .status)" == closed ]]; then
   state=merged
+elif [[ "$(get .metadata.dispatch_state)" == awaiting-review ]]; then
+  state=awaiting-review
 elif [[ "$(jq -r .is_error <<<"$last")" == true ]]; then
   state=failed
 else

@@ -34,7 +34,8 @@ A one-off request and a long-running project go through the same flow. What carr
 - **Design before code.** `design` finds prior art (docs, code, existing beads, and connected sources with your permission), removes ambiguity, and writes a design document.
 - **Task graphs with real checks.** `split-plan` turns a design, a plan or a prompt into beads tasks. Each task has acceptance criteria, a path scope, dependencies, and a verify command that exercises the behaviour.
 - **One task, one worktree, one session.** `dispatch` starts a headless Claude Code session per task, in its own worktree. That worker implements the task, delegating to your installed agents when your configuration says so, then merges and closes it.
-- **Merges that can't skip the checks.** Workers merge through `finish-task.sh`. While holding the branch's merge queue, it rebases, runs the verify command and merges. When that fails, the worker, which has the task's context, fixes it.
+- **Merges that can't skip the checks.** Workers merge through `finish-task.sh`. While holding the branch's merge queue, it rebases, runs the verify command, runs the project's own `[pre-merge]` checks (type check, lint, tests, from `.config/wt.toml`) and merges. When that fails, the worker, which has the task's context, fixes it.
+- **Review before merging, when a task asks for it.** `--review agent` sends the diff to a separate reviewer session, which asks for changes or approves; `--review human` opens a gate that stops the task until a person reviews the diff and resolves it.
 - **Work order.** Epics already in progress come first, then priority. Within an epic, tasks that unblock the most others go first.
 - **Crash recovery.** The session id is stored on the task before the worker starts. After a crash or a reboot, `/sdlc:dispatch` resumes each worker's own conversation in its worktree.
 - **Integration modes.** Tasks merge straight into `main`, into an epic branch that is merged at the end, or into an epic branch that ends as a pull request.
@@ -137,6 +138,7 @@ Shared by everyone using the repository, in beads:
 ```bash
 bd config set custom.dispatch.integration epic-merge   # direct (default), epic-merge or epic-pr
 bd config set custom.dispatch.target main              # branch the work ends up in (default main)
+bd config set custom.dispatch.review agent             # none (default), agent or human
 ```
 
 Tasks can carry hints for their worker: `execution_agent_type`, `execution_suggested_model` and `execution_reasoning_effort`. See [configuration](docs/configuration.md).
@@ -160,7 +162,7 @@ Highlights from [the roadmap](docs/roadmap.md):
 - GitHub Issues, and other trackers, alongside beads
 - worker sessions on Codex CLI and OpenCode, and local models through Ollama
 - several machines sharing the queue
-- review agents and human gates before merging
+- dedicated QA agents, and custom statuses
 - deduplication of similar tasks
 
 ## Inspirations

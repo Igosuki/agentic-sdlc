@@ -7,8 +7,9 @@ Usage: stats.sh [epic-id]
 
 Reports dispatched work from the event beads that record each worker attempt
 (record-task.sh): per task its latest state, attempts, cost, duration, models
-and agents; per epic and overall the totals. A crashed run that was never
-recorded isn't counted.
+and agents, plus the task's review cost (dispatch_review_cost metadata, an
+agent review level); per epic and overall the totals, review cost included.
+A crashed run that was never recorded isn't counted.
 
 Exit codes: 0 reported, 2 invalid arguments.
 EOF2
@@ -34,15 +35,16 @@ jq -rn --argjson all "$all" --argjson events "$events" --arg only "$only" '
       task: .[0].task, title: ($by[.[0].task].title // ""), epic: ($by[.[0].task].parent // null),
       state: (sort_by(.created) | last.state), attempts: length,
       cost: (map(.cost) | add), seconds: (map(.seconds) | add),
+      review_cost: (try ($by[.[0].task].metadata.dispatch_review_cost // "0" | tonumber) catch 0),
       models: (map(.model | split(",")[]) | unique | map(select(. != "")) | join(",")),
       agents: (map(.agents[]) | unique | join(","))})
   | map(select($only == "" or .epic == $only))
   | if length == 0 then "no recorded attempts" else
       (group_by(.epic) | map(
         (.[0].epic) as $e
-        | (if $e then "epic \($e) \"\($by[$e].title // "")\" (\($by[$e].status // "?")): \(length) tasks, \(map(.cost) | add | money), \(map(.seconds) | add | dur)"
-           else "no epic: \(length) tasks, \(map(.cost) | add | money), \(map(.seconds) | add | dur)" end),
-          (.[] | "  \(.task)  \(.state)  \(.attempts) attempt\(if .attempts > 1 then "s" else "" end)  \(.cost | money)  \(.seconds | dur)  \(.models)\(if .agents != "" then "  agents: \(.agents)" else "" end)  \(.title)")
+        | (if $e then "epic \($e) \"\($by[$e].title // "")\" (\($by[$e].status // "?")): \(length) tasks, \(map(.cost + .review_cost) | add | money), \(map(.seconds) | add | dur)"
+           else "no epic: \(length) tasks, \(map(.cost + .review_cost) | add | money), \(map(.seconds) | add | dur)" end),
+          (.[] | "  \(.task)  \(.state)  \(.attempts) attempt\(if .attempts > 1 then "s" else "" end)  \(.cost | money)  \(.seconds | dur)\(if .review_cost > 0 then "  review \(.review_cost | money)" else "" end)  \(.models)\(if .agents != "" then "  agents: \(.agents)" else "" end)  \(.title)")
       ) | .[]),
-      "total: \(length) tasks, \(map(.cost) | add | money), \(map(.seconds) | add | dur)"
+      "total: \(length) tasks, \(map(.cost + .review_cost) | add | money), \(map(.seconds) | add | dur)"
     end'

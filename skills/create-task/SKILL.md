@@ -27,6 +27,7 @@ Bead commands return little and can run directly:
 Follow the task format and verify rules of the split-plan skill, `${CLAUDE_SKILL_DIR}/../split-plan/SKILL.md`, section 2. Read that section if it isn't already in your context.
 - **Verify:** one short command that exits 0 when the acceptance is met. It must exercise the behaviour, so a syntax check alone doesn't count.
 - **Scope:** the path prefixes the task changes.
+- **Review:** choose `--review` with the same rules as split-plan section 2: `agent` for medium and large tasks and tasks touching authentication, security, payments, data migrations or public APIs; `human` when a person must sign off; `none` for small documentation, configuration or test-only tasks.
 - **Large tasks:** if the task is large, create it anyway, then suggest `/sdlc:split-task <id>`.
 
 Ask with AskUserQuestion only what you can't infer, such as which epic the task belongs to. If AskUserQuestion isn't available (headless session), choose the most reasonable option and write it under "Assumptions" in the description.
@@ -37,7 +38,7 @@ Ask with AskUserQuestion only what you can't infer, such as which epic the task 
 ${CLAUDE_SKILL_DIR}/scripts/create-task.sh --title "<title>" --description "<details>" \
   --acceptance "<checks>" --scope "<path/,other/path>" --verify "<command>" \
   --complexity small|medium|large --domain <domain> \
-  [--parent <epic>] [--after <id>]... [--design <doc>] [--agent <agent>] [--model <model>] [--effort <level>]
+  [--parent <epic>] [--after <id>]... [--design <doc>] [--agent <agent>] [--model <model>] [--effort <level>] [--review none|agent|human]
 ```
 
 Show `bd show <id>`. Then say whether the task is ready for `/sdlc:dispatch` or what it waits for.

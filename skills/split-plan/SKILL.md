@@ -45,7 +45,7 @@ ${CLAUDE_SKILL_DIR}/../create-task/scripts/create-task.sh --title "<title>" --de
   --acceptance "<checks>" --scope "<path/,other/path>" --verify "<command>" \
   --complexity small|medium|large --domain <domain> \
   [--type epic] [--parent <id>] [--after <id>]... [--design <doc>] \
-  [--agent <agent>] [--model <model>] [--effort <level>]
+  [--agent <agent>] [--model <model>] [--effort <level>] [--review none|agent|human]
 ```
 
 Set `--agent`, `--model` or `--effort` only when a task clearly needs a particular installed agent, model or effort. Otherwise the worker and the user's configuration decide.
@@ -75,6 +75,13 @@ Keep work together when:
 - it shares state or context (parsing and validating the same structure)
 - it has a single verification point
 
+### Review
+
+Set `--review` on each task:
+- `agent`: medium and large tasks, and any task touching authentication, security, payments, data migrations or public APIs
+- `human`: a person must sign off — security-sensitive changes, destructive migrations, legal or compliance text
+- `none`: small documentation, configuration or test-only tasks
+
 ### Shared interfaces
 
 If a task defines interfaces that other tasks consume (types, schemas, API contracts, file formats), make it a separate task and make the consumers wait for it with `--after`. Otherwise they build against nothing.
@@ -101,7 +108,7 @@ ${CLAUDE_SKILL_DIR}/../create-task/scripts/create-task.sh --parent sdlc-a1b \
   --description "JWT auth: POST /auth/login, token validation middleware, refresh token rotation. Uses the users table from the schema task." \
   --acceptance "Valid credentials return a token; invalid ones return 401; expired tokens are rejected" \
   --scope "src/auth/,tests/auth/" --verify "pytest tests/auth -v" \
-  --complexity medium --domain backend --after sdlc-a1b.1
+  --complexity medium --domain backend --after sdlc-a1b.1 --review agent
 ```
 
 **In plan mode**, don't create anything: plan mode is read-only. Write the task graph into the plan file instead, with every field the script takes and the dependencies, so the user approves it with the plan. Once plan mode has ended and the plan is approved, create exactly that graph, and don't ask for approval again.

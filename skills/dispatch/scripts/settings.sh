@@ -15,6 +15,8 @@ Prints the dispatch settings as "key=value" lines, or the value of one key.
                from the same frontmatter, no default
   integration  direct or epic-merge, from bd config custom.dispatch.integration (default direct)
   target       branch tasks end up in, from bd config custom.dispatch.target (default main)
+  review       none, agent or human: the review level for tasks with no review
+               metadata of their own, from bd config custom.dispatch.review (default none)
 
 Example .claude/sdlc.local.md:
   ---
@@ -49,10 +51,11 @@ design_dir=$(local_setting design_dir)
 workflow=$(local_setting workflow)
 integration=$(bd_setting integration)
 target=$(bd_setting target)
-declare -A values=([parallel]="${parallel:-2}" [design_dir]="$design_dir" [workflow]="$workflow" [integration]="${integration:-direct}" [target]="${target:-main}")
+review=$(bd_setting review)
+declare -A values=([parallel]="${parallel:-2}" [design_dir]="$design_dir" [workflow]="$workflow" [integration]="${integration:-direct}" [target]="${target:-main}" [review]="${review:-none}")
 
 if [[ $# -eq 0 ]]; then
-  for key in parallel design_dir workflow integration target; do echo "$key=${values[$key]}"; done
+  for key in parallel design_dir workflow integration target review; do echo "$key=${values[$key]}"; done
 elif [[ -n "${values[$1]+set}" ]]; then
   echo "${values[$1]}"
 else

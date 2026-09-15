@@ -29,14 +29,16 @@ Stored in the beads database, so every machine and person dispatching the reposi
 ```bash
 bd config set custom.dispatch.integration epic-merge
 bd config set custom.dispatch.target main
+bd config set custom.dispatch.review agent
 ```
 
 | Key | Default | Meaning |
 |---|---|---|
 | `custom.dispatch.integration` | `direct` | `direct`, `epic-merge` or `epic-pr` (see [workflow](workflow.md#integration-modes)) |
 | `custom.dispatch.target` | `main` | branch the work ends up in |
+| `custom.dispatch.review` | `none` | `none`, `agent` or `human`: review level for tasks with no `review` metadata of their own (see [workflow](workflow.md#review-levels)) |
 
-An epic can use a different mode: `bd update <epic> --set-metadata dispatch_integration=epic-pr`, set before its first dispatch.
+An epic can use a different mode: `bd update <epic> --set-metadata dispatch_integration=epic-pr`, set before its first dispatch. A task can use a different review level: `create-task.sh --review agent`, or `bd update <task> --set-metadata review=human`.
 
 ## Per task: execution hints
 
@@ -48,6 +50,25 @@ bd update <task> --set-metadata execution_reasoning_effort=high
 
 Or at creation, with `create-task.sh --agent --model --effort`. Without hints, the worker is a plain Sonnet session, and your own configuration (`CLAUDE.md`, installed agents) decides whether it delegates.
 
+## Project checks: `.config/wt.toml`
+
+The project's own checks run as `wt` pre-merge hooks, so they gate every merge the same way regardless of who or what runs it:
+
+```toml
+[pre-merge]
+lint = "npm run lint"
+typecheck = "npm run typecheck"
+test = "npm test"
+```
+
+`/sdlc:init` proposes these from `skills/init/scripts/checks.sh`, which scans the repository (`package.json`, Makefile, justfile, `pyproject.toml`, `Cargo.toml`, `go.mod`) and lists the commands already configured. Adding one by hand: `init.sh --pre-merge lint="npm run lint"` (repeatable; an existing key is kept, not overwritten).
+
+The first time a machine runs one of these commands, `wt` asks for approval; non-interactively (a worker) it fails instead, and `finish-task.sh` reports that a person is needed. A person approves once, in the main checkout:
+
+```bash
+wt config approvals add
+```
+
 ## Hooks
 
 The plugin ships `hooks/hooks.json`. The worker hooks only act in worker sessions, which `run-task.sh` and `resume-task.sh` start with `DISPATCH_TASK=<task>` and the plugin loaded:
@@ -55,7 +76,7 @@ The plugin ships `hooks/hooks.json`. The worker hooks only act in worker session
 | Hook | In a worker session | Elsewhere |
 |---|---|---|
 | SessionStart | restates the task's lifecycle, after a resume or a compaction too | with `workflow: build`, routes new work to `/sdlc:build` |
-| PreToolUse (Bash) | denies `bd close`, `bd update --status closed`, `wt merge` and `git push`: `finish-task.sh` does those | nothing |
+| PreToolUse (Bash) | denies `bd close`, `bd update --status closed`, `wt merge`, `git push`, `bd gate resolve`/`bd gate close`, and setting `review` or `dispatch_review*` metadata: `finish-task.sh` does those | nothing |
 | Stop | blocks the first attempt to end while the task is open and the worker hasn't commented since it was dispatched | nothing |
 
 ## Worker permissions

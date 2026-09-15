@@ -36,7 +36,7 @@ If the bead is only a title, nothing covers it, or it conflicts with an existing
 
 ## 2. Decompose
 
-Apply the sizing, granularity, shared-interface, scope and task-format rules from the split-plan skill: `${CLAUDE_SKILL_DIR}/../split-plan/SKILL.md`, section 2. Read that section if it isn't already in your context.
+Apply the sizing, granularity, shared-interface, scope, review and task-format rules from the split-plan skill: `${CLAUDE_SKILL_DIR}/../split-plan/SKILL.md`, section 2. Read that section if it isn't already in your context.
 
 Create each child, in dependency order:
 
@@ -45,7 +45,7 @@ ${CLAUDE_SKILL_DIR}/../create-task/scripts/create-task.sh --parent <bead-id> \
   --title "<title>" --description "<details>" --acceptance "<checks>" \
   --scope "<path/,other/path>" --verify "<command>" \
   --complexity small|medium|large --domain <domain> \
-  [--after <id>]... [--design <doc>]
+  [--after <id>]... [--design <doc>] [--review none|agent|human]
 ```
 
 Use `bd` directly for fixes the script doesn't cover.

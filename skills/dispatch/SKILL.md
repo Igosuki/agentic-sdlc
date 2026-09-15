@@ -19,14 +19,14 @@ In every script call below, pass `--epic <id>` when the arguments name an epic, 
 
 ## 1. Look
 
-- `${CLAUDE_SKILL_DIR}/scripts/workers.sh`: dispatched tasks that aren't closed, with their state (running, crashed, stopped or failed).
+- `${CLAUDE_SKILL_DIR}/scripts/workers.sh`: dispatched tasks that aren't closed, with their state (running, crashed, stopped, failed or awaiting-review).
 - `${CLAUDE_SKILL_DIR}/scripts/next-tasks.sh`: ready tasks in work order.
 
 Confirm with AskUserQuestion what is about to happen: the tasks that will start, the parallel limit, the integration mode and the target branch. If AskUserQuestion isn't available (headless session), go ahead. Never ask in plain text and stop.
 
 ## 2. Handle crashed and stopped workers
 
-**Crashed** (`dispatch_state=running`, no process): decide from the evidence `workers.sh` prints. For more, such as the full log, have a reading agent answer a precise question.
+**Crashed** (`dispatch_state=running`, no process): decide from the evidence `workers.sh` prints: its last events usually say enough. Don't read worker logs yourself, since they are long and full of encoded thinking blocks. If you need more, run `${CLAUDE_SKILL_DIR}/scripts/logs.sh <task>`, or have a reading agent answer a precise question.
 - **The log has a result:** the worker ended, but its attempt wasn't recorded. Run `${CLAUDE_SKILL_DIR}/scripts/record-task.sh <task>`.
 - **Resume:** the transcript and worktree exist, and the cause is gone: a shutdown, a killed process, a transient error. A stop with no error is a reason to resume, even if it happened before. Run `${CLAUDE_SKILL_DIR}/scripts/resume-task.sh <task> --prompt "<what stopped it, and continue task <task>>"`.
 - **Not yet:** the same cause would stop it again, such as a usage limit, an authentication failure or a full disk. Report the cause and what would fix it.
@@ -41,9 +41,10 @@ Run `${CLAUDE_SKILL_DIR}/scripts/dispatch-next.sh`. It starts the next ready tas
 
 ## 4. Follow
 
-Watch with the Monitor tool, `persistent: true`, command `${CLAUDE_SKILL_DIR}/scripts/watch.sh`. A headless session keeps running while the watch lasts. Each line is an event:
+Watch with the Monitor tool, with `persistent: true` so the watch doesn't time out while workers run, and command `${CLAUDE_SKILL_DIR}/scripts/watch.sh`. A headless session keeps running while the watch lasts. Each line is an event:
 - `ready <task>`, `ended <task> merged` or `ended <task> pr-opened`: run `dispatch-next.sh`. Say one short line at most. For `pr-opened`, give the pull request's URL (`dispatch_pr` on the task).
 - `ended <task> stopped` or `ended <task> failed`: handle it as in step 2, and tell the user.
+- `ended <task> awaiting-review`: tell the user which task waits for their review, and the commands from `workers.sh` (review the diff, request changes, or `bd gate resolve`). It resumes on its own once they resolve the gate.
 - `crashed <task>`: handle it as in step 2.
 - `closed <epic>`: tell the user.
 - `idle`: the watch ends. Report.

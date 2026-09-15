@@ -3,7 +3,7 @@ set -euo pipefail
 
 usage() {
   cat <<'EOF'
-Usage: resume-task.sh <task-id> [--prompt TEXT]
+Usage: resume-task.sh <task-id> [--prompt TEXT] [--ended]
 
 Resumes the Claude session of a task whose worker crashed, detached, in the
 task's worktree, and returns. When the worker ends, record-task.sh records the
@@ -12,23 +12,26 @@ attempt, as after run-task.sh.
 The task must be in_progress with dispatch_state=running and no process
 running its session, and still have its worktree and its session transcript.
 If the worker had in fact ended (its log has a result), the attempt is
-recorded instead of resumed.
+recorded instead of resumed, unless --ended is given.
 
 Options:
   --prompt TEXT   message for the resumed session, default: continue where you stopped
+  --ended         resume even though the log already has a result, for example
+                  a task a person reviewed after finish-task.sh sent it back
 
 Prints: "resumed <task> <worktree> <log>", or record-task.sh's line.
 Exit codes: 0 resumed or recorded, 2 invalid arguments or task not resumable.
 EOF
 }
 
-id="" prompt=""
+id="" prompt="" ended=false
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -h|--help) usage; exit 0 ;;
     --prompt)
       [[ $# -ge 2 ]] || { echo "error: --prompt needs a value" >&2; usage >&2; exit 2; }
       prompt="$2"; shift ;;
+    --ended) ended=true ;;
     -*) echo "error: unknown option $1" >&2; usage >&2; exit 2 ;;
     *)
       [[ -z "$id" ]] || { echo "error: one task at a time" >&2; usage >&2; exit 2; }
@@ -53,7 +56,7 @@ if pgrep -f -- "--(session-id|resume) $session" >/dev/null; then
   echo "error: the worker for $id is still running" >&2
   exit 2
 fi
-if jq -eR 'fromjson? | select(.type == "result")' "$log" >/dev/null 2>&1; then
+if [[ "$ended" == false ]] && jq -eR 'fromjson? | select(.type == "result")' "$log" >/dev/null 2>&1; then
   exec "$dir/record-task.sh" "$id"
 fi
 
@@ -66,7 +69,7 @@ if [[ ${#errors[@]} -gt 0 ]]; then
   exit 2
 fi
 
-prompt=${prompt:-"Your session was interrupted before you finished. Check the state of the worktree, then continue task $id from where you stopped."}
+prompt=${prompt:-"Your session was interrupted before you finished. Check the state of the worktree, then continue task $id from where you stopped. If finish-task.sh says a person is needed, record it with bd comments add $id \"<what's needed>\" and stop."}
 plugin_root=$(cd "$dir/../../.." && pwd)
 worker=(env "DISPATCH_TASK=$id" claude -p --resume "$session" --permission-mode auto --output-format stream-json --verbose --forward-subagent-text
   --allowedTools "Bash($dir/finish-task.sh *)")

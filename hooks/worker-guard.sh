@@ -19,4 +19,8 @@ finish="${CLAUDE_PLUGIN_ROOT}/skills/dispatch/scripts/finish-task.sh $DISPATCH_T
   || deny "Workers don't merge with wt. Run $finish: it rebases, verifies and merges through the merge queue."
 [[ ! "$cmd" =~ ${start}git[[:space:]]+push([[:space:]]|$) ]] \
   || deny "Workers don't push. Run $finish: it merges, or pushes and opens the PR in epic-pr mode."
+[[ ! "$cmd" =~ ${start}bd[[:space:]]+gate[[:space:]]+(resolve|close)([[:space:]]|$) ]] \
+  || deny "Workers don't resolve review gates. A person runs bd gate resolve after reviewing."
+[[ ! "$cmd" =~ (--set-metadata|--unset-metadata)(=|[[:space:]]+)[\"\']?(review|dispatch_review[a-zA-Z_]*)([=[:space:]\"\']|$) ]] \
+  || deny "Workers don't set the review verdict. $finish manages review and dispatch_review* metadata."
 exit 0
