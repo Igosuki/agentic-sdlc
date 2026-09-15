@@ -17,6 +17,8 @@ You are the supervisor. Each task is carried by a worker: a Claude session in th
 
 When the arguments name an epic, pass `--epic <id>` to `workers.py`, `next-tasks.py`, `dispatch-next.sh`, `watch.py` and `stats.py`. When they give a parallel limit, pass `--parallel <N>` to `dispatch-next.sh` only.
 
+Run the scripts by the paths written here, without a `python3` or `bash` prefix: they're executable, and a prefixed command doesn't match this skill's permissions. Run them; don't read their source.
+
 ## 1. Look
 
 - `${CLAUDE_SKILL_DIR}/scripts/workers.py`: dispatched tasks that aren't closed, with their state (running, crashed, stopped, failed or awaiting-review).
@@ -45,7 +47,7 @@ Report each `not started` reason. If nothing started and that final line shows 0
 
 ## 4. Follow
 
-Watch with the Monitor tool, with `persistent: true` so the watch doesn't time out while workers run, and command `${CLAUDE_SKILL_DIR}/scripts/watch.py`. A headless session keeps running while the watch lasts. Each line is an event:
+Watch with the Monitor tool, with `persistent: true` so the watch doesn't time out while workers run, and command `${CLAUDE_SKILL_DIR}/scripts/watch.py`, plus `--epic <id>` when there is one. The watch takes no `--parallel`. A headless session keeps running while the watch lasts. Each line is an event:
 - `ready <task>`, `ended <task> merged` or `ended <task> pr-opened`: run `dispatch-next.sh`. Say one short line at most. For `pr-opened`, give the pull request's URL (`dispatch_pr` on the task).
 - `ended <task> stopped` or `ended <task> failed`: handle it as in step 2, tell the user, then run `dispatch-next.sh` to refill the slot it freed — unless the cause would stop any new worker too (a usage limit, an authentication failure, a full disk), in which case stop the watch and report instead.
 - `ended <task> awaiting-review`: tell the user which task waits for their review, and the commands from `workers.py` (review the diff, request changes, or `bd gate resolve`). It resumes on its own once they resolve the gate.
