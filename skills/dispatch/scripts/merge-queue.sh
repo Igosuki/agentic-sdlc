@@ -13,7 +13,8 @@ on every machine sharing the beads database. The queue is an ephemeral bead
 dispatch.queue.<branch>. Holding it means having claimed that bead.
 
   ensure    create the queue if it doesn't exist; prints its bead id
-  acquire   wait until <holder> holds the queue (default timeout 1800s)
+  acquire   wait until <holder> holds the queue (default timeout 1800s);
+            already holding it counts as acquired
   release   free the queue if <holder> holds it
 
 Exit codes: 0 done, 1 timed out or bd failed, 2 invalid arguments or no queue.
@@ -47,16 +48,19 @@ case "$cmd" in
     ;;
   acquire)
     [[ -n "$lock" ]] || { echo "error: no merge queue for $branch (run: merge-queue.sh ensure $branch)" >&2; exit 2; }
-    deadline=$(( $(date +%s) + timeout ))
-    waiting=""
-    until bd update "$lock" --claim --actor "$holder" >/dev/null 2>&1; do
-      if [[ -z "$waiting" ]]; then
-        echo "waiting for the $branch merge queue, held by $(bd show "$lock" --json | jq -r '.[0].assignee // "unknown"')"
-        waiting=1
-      fi
-      (( $(date +%s) < deadline )) || { echo "error: timed out waiting for the $branch merge queue" >&2; exit 1; }
-      sleep 5
-    done
+    current=$(bd show "$lock" --json | jq -r '.[0] | select(.status == "in_progress") | .assignee // empty')
+    if [[ "$current" != "$holder" ]]; then
+      deadline=$(( $(date +%s) + timeout ))
+      waiting=""
+      until bd update "$lock" --claim --actor "$holder" >/dev/null 2>&1; do
+        if [[ -z "$waiting" ]]; then
+          echo "waiting for the $branch merge queue, held by $(bd show "$lock" --json | jq -r '.[0].assignee // "unknown"')"
+          waiting=1
+        fi
+        (( $(date +%s) < deadline )) || { echo "error: timed out waiting for the $branch merge queue" >&2; exit 1; }
+        sleep 5
+      done
+    fi
     ;;
   release)
     [[ -n "$lock" ]] || exit 0

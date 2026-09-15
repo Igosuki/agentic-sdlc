@@ -20,8 +20,9 @@ queue of the task's base branch:
   4. runs the verify command (for an integration task, the verify command of
      every task in the epic)
   5. fast-forwards the base to the branch
-Then closes the task, and closes the epic when it is done: after its last task
-in direct mode, after its integration task in epic-merge mode. In epic-pr mode,
+Then closes the task, closes each parent task whose children are now all
+closed, and closes the epic when it is done: after its last task in direct
+mode, after its integration task in epic-merge mode. In epic-pr mode,
 the integration task runs the project's pre-merge checks and pushes the epic
 branch and opens a pull request instead of step 5, and gates this task on the
 pull request (gh:pr); close-prs.sh closes the task and the epic once the pull
@@ -60,8 +61,12 @@ task=$(show "$id") || { echo "error: no bead $id" >&2; exit 2; }
 base=$(get "$task" .metadata.dispatch_base)
 branch=$(get "$task" .metadata.dispatch_branch)
 role=$(get "$task" .metadata.dispatch_role)
-if [[ "$(get "$task" .status)" != in_progress || "$(get "$task" .metadata.dispatch_state)" != running || -z "$base" || -z "$branch" ]]; then
-  echo "error: $id has no dispatched worker (status $(get "$task" .status), dispatch_state: $(get "$task" .metadata.dispatch_state))" >&2
+session=$(get "$task" .metadata.dispatch_session)
+state=$(get "$task" .metadata.dispatch_state)
+# decision 2: claimed (in_progress, a session) with no outcome recorded yet. Until T3 removes
+# the running value, "no outcome" also means dispatch_state is still "running".
+if [[ "$(get "$task" .status)" != in_progress || -z "$session" || -z "$base" || -z "$branch" || ( -n "$state" && "$state" != running ) ]]; then
+  echo "error: $id has no dispatched worker (status $(get "$task" .status), dispatch_state: $state)" >&2
   exit 2
 fi
 wt_path=$(wt list --format json </dev/null 2>/dev/null | jq -r --arg b "$branch" '.items[] | select(.branch == $b) | .worktree.path // empty')
@@ -101,7 +106,6 @@ fi
 if [[ "$review" == agent ]] && ! { [[ "$(get "$task" .metadata.dispatch_review)" == approved && "$(get "$task" .metadata.dispatch_review_patch)" == "$patch" ]]; }; then
   logs="$(git -C "$wt_path" rev-parse --path-format=absolute --git-common-dir)/sdlc/logs"
   mkdir -p "$logs"
-  session=$(get "$task" .metadata.dispatch_session)
   rounds=$(get "$task" .metadata.dispatch_review_rounds); rounds=${rounds:-0}; rounds=$((rounds + 1))
 
   schema='{"type":"object","properties":{"verdict":{"type":"string","enum":["approve","changes"]},"summary":{"type":"string"},"findings":{"type":"array","items":{"type":"object","properties":{"file":{"type":"string"},"line":{"type":"integer"},"severity":{"type":"string","enum":["blocker","major","minor"]},"problem":{"type":"string"},"fix":{"type":"string"}},"required":["file","severity","problem"]}}},"required":["verdict","summary","findings"]}'
@@ -219,8 +223,8 @@ if [[ "$role" == integration && "$mode" == epic-pr ]]; then
     fi
     problem "the project's pre-merge checks failed: $(tail -5 <<<"$hook_out")"
   fi
-  git -C "$wt_path" push --force-with-lease -u origin "$branch" >/dev/null 2>&1 \
-    || problem "pushing $branch to origin failed: $(git -C "$wt_path" push --force-with-lease -u origin "$branch" 2>&1 | tail -3)"
+  push_out=$(git -C "$wt_path" push --force-with-lease -u origin "$branch" 2>&1) \
+    || problem "pushing $branch to origin failed: $(tail -3 <<<"$push_out")"
   if ! url=$(cd "$wt_path" && gh pr view "$branch" --json url --jq .url 2>/dev/null); then
     body="Epic $epic: $(get "$epic_bead" .title)
 
@@ -254,6 +258,14 @@ rm -f "$merge_log"
 bd close "$id" --reason "merged into $base" >/dev/null
 bd update "$id" --set-metadata dispatch_state=merged >/dev/null
 echo "merged $id into $base and closed it"
+
+# decision 1: a parent task closes once its last child does, since its code merged along with it.
+parents=$(bd list --all --limit 0 --json | "$dir/tasks.py" parents-to-close "$id")
+while IFS= read -r parent_id; do
+  [[ -n "$parent_id" ]] || continue
+  bd close "$parent_id" --reason "all its children are closed" >/dev/null
+  echo "closed $parent_id"
+done <<<"$parents"
 
 if [[ -n "$epic" && "$(show "$epic" | jq -r .status)" != closed ]]; then
   integration=$(show "$epic" | jq -r '.metadata.dispatch_integration_task // empty')
