@@ -17,7 +17,7 @@ workflow: build
 | Key | Default | Meaning |
 |---|---|---|
 | `parallel` | `2` | workers running at a time on this machine |
-| `design_dir` | none | where `/sdlc:design` writes documents. Without it: the location the request names, the repository's convention, then `docs/design` |
+| `design_dir` | none | where `/sdlc:design` writes documents, when the request doesn't name a location. Order: the location the request names, then `design_dir`, then the repository's convention, then `docs/design` |
 | `workflow` | none | `build`: a SessionStart hook tells new sessions in this project to start new work with `/sdlc:build` |
 
 `skills/dispatch/scripts/settings.sh` prints the effective values. `/sdlc:status` shows them.
@@ -79,9 +79,13 @@ The plugin ships `hooks/hooks.json`. The worker hooks only act in worker session
 | PreToolUse (Bash) | denies `bd close`, `bd update --status closed`, `wt merge`, `git push`, `bd gate resolve`/`bd gate close`, and setting `review` or `dispatch_review*` metadata: `finish-task.sh` does those | nothing |
 | Stop | blocks the first attempt to end while the task is open and the worker hasn't commented since it was dispatched | nothing |
 
+`worker-guard.sh` is a guardrail, not a security boundary: it matches specific command shapes, so a worker set on evading it can still push, merge or close directly.
+
 ## Worker permissions
 
-Workers run with `--permission-mode auto`, which is Claude Code's classifier for unattended sessions. They never use `--dangerously-skip-permissions`. Allowing `finish-task.sh` explicitly is the only extra permission.
+Workers run with `--permission-mode auto`, Claude Code's classifier for unattended sessions, and never `--dangerously-skip-permissions`. Allowing `finish-task.sh` explicitly is the only extra permission.
+
+Because beads runs on Dolt and is shared, anyone who can write to it can run commands on the machine that dispatches: worker prompts are built from a task's title, description and acceptance (bead text), workers run in `--permission-mode auto`, and `finish-task.sh` runs a task's `verify` metadata through `bash -c`. This is by design — sdlc trusts whoever can write to the project's beads database as much as it trusts the machine it dispatches on.
 
 ## Logs
 

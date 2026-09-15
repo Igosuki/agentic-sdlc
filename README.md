@@ -46,7 +46,7 @@ A one-off request and a long-running project go through the same flow. What carr
 - [Claude Code](https://code.claude.com) (developed against 2.1.272)
 - [beads](https://github.com/gastownhall/beads) `bd` 1.2.2 or later, with the Dolt backend
 - [worktrunk](https://github.com/max-sixty/worktrunk) `wt` 0.77 or later
-- `git`, `jq`, `uuidgen`, and `setsid` and `pgrep`, found on Linux. macOS isn't supported yet (see the [roadmap](docs/roadmap.md)).
+- `git`, `jq`, `python3`, `uuidgen`, and `setsid` and `pgrep`, found on Linux. macOS isn't supported yet (see the [roadmap](docs/roadmap.md)).
 - `gh`, only for the `epic-pr` integration mode
 
 ## Installation

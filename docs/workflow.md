@@ -23,7 +23,7 @@ flowchart TD
   - **local sources, always used:** earlier designs, docs, code, and existing beads
   - **external sources:** MCP servers such as a wiki, Notion or Drive, skills, and web search. It asks before using them, or uses what the request needs in a headless session.
 - **Questions:** it asks only where the answer changes a contract, a goal or the scope. In a headless session it records assumptions instead.
-- **Output:** a document, by default in `docs/design/<slug>.md`, or in `design_dir`, or following the repository's convention. It contains a prior-art section, open questions and assumptions, and whichever of goals, definition of done, glossary, contracts and decisions the request needs.
+- **Output:** a document. Where it's written, in order: the location the request names, then `design_dir`, then the repository's existing convention, then `docs/design/<slug>.md`. It contains a prior-art section, open questions and assumptions, and whichever of goals, definition of done, glossary, contracts and decisions the request needs.
 
 Reading is delegated to a cheap reading agent. The planning skills run on Opus and only think about what comes back.
 
@@ -33,7 +33,7 @@ Reading is delegated to a cheap reading agent. The planning skills run on Opus a
 - a description, and acceptance criteria
 - a **scope**: the path prefixes it changes. Tasks that don't wait for each other don't share paths.
 - a **verify command**: one short command that exits 0 when the acceptance is met. It must exercise the behaviour, so a syntax check alone doesn't count, and it may only rely on files that exist once the task's dependencies are done.
-- a **complexity** (small, medium, large) and a **domain**
+- a **complexity** (small, medium, large)
 - **dependencies**: tasks wait for shared interfaces before using them
 
 Once the graph exists, `bd swarm validate` checks it for cycles and parts that aren't connected. `/sdlc:split-task <id>` splits an existing bead the same way. `/sdlc:create-task` creates a single task.
@@ -44,10 +44,10 @@ In plan mode, split-plan writes the graph into the plan instead, and creates it 
 
 `/sdlc:dispatch [epic]` is the supervisor: a Claude Code session, on Sonnet, that starts and follows workers. It holds no state of its own. Everything lives in beads and on disk, so any session can take over at any time.
 
-1. **Look:** `workers.sh` shows dispatched tasks and their state. `next-tasks.sh` shows ready tasks in work order.
+1. **Look:** `workers.py` shows dispatched tasks and their state. `next-tasks.py` shows ready tasks in work order.
 2. **Handle crashed and stopped workers.** A crashed worker is resumed, reported, or proposed for reopening. A stopped worker is reported with its reason.
 3. **Dispatch:** `dispatch-next.sh` starts ready tasks up to the parallel limit.
-4. **Follow:** `watch.sh` runs under the Monitor tool and prints an event for each task that becomes ready, each worker that ends or crashes, and each epic that closes. The supervisor reacts to each event, until nothing is running and nothing is ready.
+4. **Follow:** `watch.py` runs under the Monitor tool and prints an event for each task that becomes ready, each worker that ends or crashes, and each epic that closes. The supervisor reacts to each event, until nothing is running and nothing is ready.
 
 ### Work order
 
@@ -82,7 +82,7 @@ Each task has a review level, `--review none|agent|human` on `create-task.sh`, d
 
 - **`none`:** no review, straight to merging.
 - **`agent`:** a separate reviewer session (an installed `reviewer` agent if there is one, otherwise a plain Sonnet session) reviews the diff against the task's acceptance and scope. On approval, the merge continues. On requested changes, `finish-task.sh` exits 1 with the findings, the worker fixes them and runs it again. After 3 rounds it exits 3: a person is needed.
-- **`human`:** a gate (`bd gate create --type=human`) blocks the task, `dispatch_state` becomes `awaiting-review`, and `finish-task.sh` exits 3. The worker stops. Once a person reviews the diff (`git diff <base>...<branch>` in the task's worktree) and runs `bd gate resolve <gate>`, `resume-reviewed.sh` (run by `watch.sh`, after `close-prs.sh`) resumes the worker to read the review's comments and continue.
+- **`human`:** a gate (`bd gate create --type=human`) blocks the task, `dispatch_state` becomes `awaiting-review`, and `finish-task.sh` exits 3. The worker stops. Once a person reviews the diff (`git diff <base>...<branch>` in the task's worktree) and runs `bd gate resolve <gate>`, `resume-reviewed.sh` (run by `watch.py`, after `close-prs.sh`) resumes the worker to read the review's comments and continue.
 
 A task is re-reviewed only when its diff changes: `finish-task.sh` compares a stable patch id (`git patch-id`) against the one last approved, so re-running it after a no-op doesn't ask for another round.
 
@@ -103,7 +103,7 @@ Setting `execution_agent_type` on a task makes the worker session run as that ag
 
 The **integration task** is created on an epic's first dispatch. It waits for every other task of the epic. It is a worker like any other, and its prompt is only to merge, which may mean editing code when the target moved or the tasks don't fit together. Its `finish-task.sh` runs the verify command of every task in the epic.
 
-In `epic-pr` mode, the integration task gates itself on the pull request with a `gh:pr` gate. `watch.sh` runs `bd gate check`, and `close-prs.sh` closes the task and the epic once the pull request is merged.
+In `epic-pr` mode, the integration task gates itself on the pull request with a `gh:pr` gate. `watch.py` runs `bd gate check`, and `close-prs.sh` closes the task and the epic once the pull request is merged.
 
 To review an epic before it is integrated, add a gate to its integration task:
 
@@ -124,8 +124,8 @@ The first time a command runs on a machine, `wt` needs a person to approve it: `
 ## Crash recovery
 
 A worker's state lives in beads, its worktree and its logs, so nothing is lost when a process or the machine dies:
-- **A crashed worker** has `dispatch_state=running`, no process running its session, and no result in its log.
-- **Diagnosis:** `workers.sh` prints the evidence to decide on resuming: worktree, commits, uncommitted files, whether the Claude transcript exists, the last events, stderr, and the boot time.
+- **A crashed worker** is claimed (`in_progress` with a `dispatch_session`), but no process runs its session and no attempt outcome is recorded (`dispatch_state` is empty, or `running` on a task claimed before this decision landed).
+- **Diagnosis:** `workers.py` prints the evidence to decide on resuming: worktree, commits, uncommitted files, whether the Claude transcript exists, the last events, stderr, and the boot time.
 - **Resuming:** `resume-task.sh` starts `claude -p --resume <session>` in the same worktree, so the worker continues its own conversation.
 - **After a reboot:** run `/sdlc:dispatch`. It resumes crashed workers when the cause is gone, and reports those it shouldn't retry, such as a usage limit or a failure that repeats.
 
@@ -133,5 +133,5 @@ A worker's state lives in beads, its worktree and its logs, so nothing is lost w
 
 - `/sdlc:status`: workers, the ready queue and settings
 - `/sdlc:stats [epic]`: cost, duration, models and agents, per task and per epic
-- `/sdlc:logs <task>`, or `skills/dispatch/scripts/logs.sh <task> [--follow]` in a terminal: what each attempt did
+- `/sdlc:logs <task>`, or `skills/dispatch/scripts/logs.py <task> [--follow]` in a terminal: what each attempt did
 - `claude --resume <session> --fork-session`: a worker's whole conversation, without changing it
