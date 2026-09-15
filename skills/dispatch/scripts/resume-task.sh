@@ -79,6 +79,7 @@ if [[ -n "$agent" ]]; then worker+=(--agent "$agent"); else worker+=(--model "${
 setsid -f bash -c '
   wt_path=$1 root=$2 log=$3 record=$4 id=$5
   shift 5
+  printf "{\"type\":\"dispatch_run\",\"started\":\"%s\"}\n" "$(date -Is)" >>"$log"
   (cd "$wt_path" && "$@") </dev/null >>"$log" 2>>"$log.err"
   cd "$root" && "$record" "$id" >>"$log.record" 2>&1
 ' resume-task "$wt_path" "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")" "$log" "$dir/record-task.sh" "$id" \

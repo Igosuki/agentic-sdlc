@@ -41,13 +41,12 @@ Run `${CLAUDE_SKILL_DIR}/scripts/dispatch-next.sh`. It starts the next ready tas
 
 ## 4. Follow
 
-- **Headless session:** don't wait. Workers keep running on their own, and their outcome lands on each task. Report and stop. Running `/sdlc:dispatch` again later picks up from there.
-- **Interactive session:** watch with the Monitor tool, `persistent: true`, command `${CLAUDE_SKILL_DIR}/scripts/watch.sh`. Each line is an event:
-  - `ready <task>` or `ended <task> merged`: run `dispatch-next.sh`. Say one short line at most.
-  - `ended <task> stopped` or `ended <task> failed`: handle it as in step 2, and tell the user.
-  - `crashed <task>`: handle it as in step 2.
-  - `closed <epic>`: tell the user.
-  - `idle`: the watch ends. Report.
+Watch with the Monitor tool, `persistent: true`, command `${CLAUDE_SKILL_DIR}/scripts/watch.sh`. A headless session keeps running while the watch lasts. Each line is an event:
+- `ready <task>` or `ended <task> merged`: run `dispatch-next.sh`. Say one short line at most.
+- `ended <task> stopped` or `ended <task> failed`: handle it as in step 2, and tell the user.
+- `crashed <task>`: handle it as in step 2.
+- `closed <epic>`: tell the user.
+- `idle`: the watch ends. Report.
 
 ## 5. Report
 

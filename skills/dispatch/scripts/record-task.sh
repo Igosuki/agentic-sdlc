@@ -10,7 +10,7 @@ run-task.sh and resume-task.sh start, or by hand if that wrapper died.
 
 From the result lines of the worker log, it sets on the task:
   dispatch_state   merged (task closed), failed (session ended in error), or stopped
-  dispatch_cost    summed over every run of the session
+  dispatch_cost    the session's cost, over every run (a resume is a new run)
   dispatch_model, dispatch_agents
 and creates a closed event bead dispatch.<state> targeting the task, with the
 worker's final message as its description. For a merged task it then removes
@@ -39,9 +39,18 @@ results=$(jq -c 'select(.type == "result")' "$log" 2>/dev/null) || results=""
 [[ -n "$results" ]] || { echo "no result for $id in $log: the worker didn't end normally"; exit 1; }
 last=$(tail -1 <<<"$results")
 
-read -r cost turns seconds < <(jq -rs '[
-  (map(.total_cost_usd // 0) | add), (map(.num_turns // 0) | add),
-  (map(.duration_ms // 0) | add / 1000 | floor)] | @tsv' <<<"$results")
+# run-task.sh and resume-task.sh write a dispatch_run line before each worker process. Within a
+# process, every result line repeats its cumulative cost (one per wake-up), so the cost is the
+# last result of each run; turns and durations are per result.
+read -r cost turns seconds < <(jq -rs '
+  [foreach .[] as $l ({run: 0, line: null};
+     if $l.type == "dispatch_run" then .run += 1 | .line = null
+     elif $l.type == "result" then .line = ($l + {run: .run})
+     else .line = null end;
+     .line // empty)]
+  | [(group_by(.run) | map(last.total_cost_usd // 0) | add),
+     (map(.num_turns // 0) | add),
+     (map(.duration_ms // 0) | add / 1000 | floor)] | @tsv' "$log")
 models=$(jq -rs 'map(.modelUsage // {} | keys) | add | unique | join(",")' <<<"$results")
 agents=$( { [[ -z "$agent" ]] || echo "$agent"
   jq -r 'select(.type == "assistant") | .message.content[]?

@@ -78,7 +78,7 @@ while IFS= read -r task; do
     fi
     if [[ -f "$log" ]]; then
       echo "  log: $log"
-      echo "  worker runs: $(jq -c 'select(.type == "system" and .subtype == "init")' "$log" 2>/dev/null | wc -l)"
+      echo "  worker runs: $(jq -c 'select(.type == "dispatch_run")' "$log" 2>/dev/null | wc -l)"
       result=$(jq -r 'select(.type == "result") | "\(.subtype) (error: \(.is_error))"' "$log" 2>/dev/null | tail -1)
       echo "  result: ${result:-none}"
       echo "  last events:"
