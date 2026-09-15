@@ -13,7 +13,7 @@ Prints the dispatch settings as "key=value" lines, or the value of one key.
                the design skill falls back to the repository's convention, then docs/design)
   workflow     "build" routes new work in this project to sdlc:build (SessionStart hook);
                from the same frontmatter, no default
-  integration  direct or epic-merge, from bd config custom.dispatch.integration (default direct)
+  integration  direct, epic-merge or epic-pr, from bd config custom.dispatch.integration (default direct)
   target       branch tasks end up in, from bd config custom.dispatch.target (default main)
   review       none, agent or human: the review level for tasks with no review
                metadata of their own, from bd config custom.dispatch.review (default none)
@@ -46,18 +46,28 @@ bd_setting() {
   [[ "$v" == *"(not set)" ]] || echo "$v"
 }
 
-parallel=$(local_setting parallel)
-design_dir=$(local_setting design_dir)
-workflow=$(local_setting workflow)
-integration=$(bd_setting integration)
-target=$(bd_setting target)
-review=$(bd_setting review)
-declare -A values=([parallel]="${parallel:-2}" [design_dir]="$design_dir" [workflow]="$workflow" [integration]="${integration:-direct}" [target]="${target:-main}" [review]="${review:-none}")
+# Computes only the requested key, so a caller that wants one key (e.g. the
+# SessionStart hook asking for "workflow") never pays for a bd call it
+# doesn't need.
+value_for() {
+  local v
+  case "$1" in
+    parallel)    v=$(local_setting parallel); echo "${v:-2}" ;;
+    design_dir)  local_setting design_dir ;;
+    workflow)    local_setting workflow ;;
+    integration) v=$(bd_setting integration); echo "${v:-direct}" ;;
+    target)      v=$(bd_setting target); echo "${v:-main}" ;;
+    review)      v=$(bd_setting review); echo "${v:-none}" ;;
+    *)           return 2 ;;
+  esac
+}
 
 if [[ $# -eq 0 ]]; then
-  for key in parallel design_dir workflow integration target review; do echo "$key=${values[$key]}"; done
-elif [[ -n "${values[$1]+set}" ]]; then
-  echo "${values[$1]}"
+  for key in parallel design_dir workflow integration target review; do
+    echo "$key=$(value_for "$key")"
+  done
+elif v=$(value_for "$1" 2>/dev/null); then
+  echo "$v"
 else
   echo "error: unknown key $1" >&2
   usage >&2
