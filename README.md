@@ -1,105 +1,162 @@
-## Claude SDLC
+# sdlc
 
-### The Workflow
+A Claude Code plugin that takes work from an idea to merged code: design it, split it into tasks, and let agents implement each task in its own git worktree, with a record of who did what and what it cost.
 
-Starting point : a prompt
-Then, agent asks clarifying questions and has access to existing docs and beads tasks until satisfied to produce a design doc
-Design doc is split into new tasks and modification of existing docs and tasks as required
-Hands over tasks to orchestrator who can prioritize work
-The implementer agent can be started in their own worktree using worktrunk, tying a worktree to a beads task and dispatch further specialist subagents as required.
-When an agent is finished, its work is tested and reviewed by agents (definition of done, security, guidelines, etc)
-Task bead is updated.
-worktree is merged and task bead is closed.
-scheduler will prefer starting work on sibling tasks rather than tasks in other epics.
-beads can be added, removed and modified at any point in time.
-agents can stop work and tag beads to notify a human to intervene, for example if a decision has to be made on a failure to merge after agents have tried everything.
+It is made for projects that last, not only one-off prompts. Work is kept in beads, so a project's designs, tasks and history build up across sessions, days and people, and any session can pick the work back up.
 
-If possible, we will want to make use of beads swarms and molecules but not necessarily as this could over complicate things.
+It builds on [beads](https://github.com/gastownhall/beads) for tasks and [worktrunk](https://github.com/max-sixty/worktrunk) for worktrees. It works with a human in the loop, or fully autonomously.
 
-### The Beads system
+```mermaid
+flowchart LR
+  R[Request] --> D[design]
+  D --> S[split-plan]
+  S --> Q[(beads tasks)]
+  Q --> X[dispatch]
+  X --> W1[worker: task 1<br/>own worktree + session]
+  X --> W2[worker: task 2]
+  W1 --> M[merge queue]
+  W2 --> M
+  M --> B[target branch or epic branch]
+```
 
-It's the underlying task management system we will use to coordinate work. It is assumed that beads is installed on the host machine.
+## For projects that last
 
-Here are the built-in beads fields : 
-- id
-- title
-- description
-- type (bug, feature, task, epic, chore)
-- status (open, in_progress,blocked, deferred, closed)
-- priority 0 to 3
-- assignee the name of the agent or the human user
-- created_at/updated_at/closed_at timestamps
-- labels/tags/metadata custom state
-- dependencies list of beads ids that this bead depends on : parent, or blocked, etc
+A one-off request and a long-running project go through the same flow. What carries a project over time:
+- **Work outlives sessions.** Designs are documents in the repository, and tasks, dependencies and progress are beads. Close Claude Code, reboot, or come back a week later: `/sdlc:dispatch` sees what is ready, what is running and what stopped, and carries on.
+- **New work builds on old work.** `design` reads earlier design documents and existing beads as prior art, and says whether the new design reuses, extends or replaces them. `split-plan` links new tasks to the ones they depend on.
+- **Work can be added at any time.** A new epic with `/sdlc:build`, one task with `/sdlc:create-task`, a finer split of an existing bead with `/sdlc:split-task`, or a bead created by hand: the queue takes it in.
+- **Progress stays focused.** Epics already in progress go first, so started work gets finished before new work starts.
+- **The history accumulates.** Every worker attempt stays on its task, with session, model, agents, cost and outcome. `/sdlc:stats` sums it per epic, and `/sdlc:logs` shows what each attempt did.
+- **The supervisor holds no state.** Any session, or any person, can take over supervising at any time.
 
-#### Custom Statuses
-- in_review:active
-- qa_testing:wip
-- on_hold:frozen
-- archived:done
+## Features
 
-There could be more
+- **Design before code.** `design` finds prior art (docs, code, existing beads, and connected sources with your permission), removes ambiguity, and writes a design document.
+- **Task graphs with real checks.** `split-plan` turns a design, a plan or a prompt into beads tasks. Each task has acceptance criteria, a path scope, dependencies, and a verify command that exercises the behaviour.
+- **One task, one worktree, one session.** `dispatch` starts a headless Claude Code session per task, in its own worktree. That worker implements the task, delegating to your installed agents when your configuration says so, then merges and closes it.
+- **Merges that can't skip the checks.** Workers merge through `finish-task.sh`. While holding the branch's merge queue, it rebases, runs the verify command and merges. When that fails, the worker, which has the task's context, fixes it.
+- **Work order.** Epics already in progress come first, then priority. Within an epic, tasks that unblock the most others go first.
+- **Crash recovery.** The session id is stored on the task before the worker starts. After a crash or a reboot, `/sdlc:dispatch` resumes each worker's own conversation in its worktree.
+- **Integration modes.** Tasks merge straight into `main`, into an epic branch that is merged at the end, or into an epic branch that ends as a pull request.
+- **Audit trail in beads.** Every attempt records its session, model, agents, cost, duration and outcome on the task, plus an event bead. `/sdlc:stats` and `/sdlc:logs` read them back.
 
-#### Custom Types
-None for now
+## Requirements
 
-#### Custom metadata
+- [Claude Code](https://code.claude.com) (developed against 2.1.272)
+- [beads](https://github.com/gastownhall/beads) `bd` 1.2.2 or later, with the Dolt backend
+- [worktrunk](https://github.com/max-sixty/worktrunk) `wt` 0.77 or later
+- `git`, `jq`, `uuidgen`, and `setsid` and `pgrep`, found on Linux. macOS isn't supported yet (see the [roadmap](docs/roadmap.md)).
+- `gh`, only for the `epic-pr` integration mode
 
-- branch : the branch name of the worktree for this bead
-- cost: usd cost for the implementation of this bead
-- agent: the name of the agent (as defined in the LLM harness markdown) that is working on this bead
-- model: the model name used by the agent for this bead
-- complexity: small, medium, large, xlarge
-- session: the session id of the agent working on this bead
-- domain: the domain of the bead, for example "frontend", "backend", "devops", "security", etc
-- prompt: the prompt passed to the implementer agent for this bead
+## Installation
 
-#### Beads commands to use 
-- bd bootstrap : only once per project
-- bd show : show the beads in a project
-- bd add : add a bead to the project
-- bd update <id> --set-metadata <field>=<value> : update a bead's metadata
-- bd assign <id> <agent_name> : assign a bead to an agent
-- bd update <id> --claim --set-metadata agent=<value> : claim a bead for an agent
-- bd list --parent ${epic_id} to see sibling tasks.
-- bd remember "<key>" "<insight>" Record discoveries 
-- bd create --type message --thread ${epic_id} \"decision: <summary>\" For design decisions visible to siblings 
-- bd ready : list ready beads for an agent to work on
-- wt list : list worktrees 
-- bd done "$task_id" "merged to $target" : mark a bead as done and merged 
-- bd reopen "$task_id reopen a task
-- bd audit record : record a bead audit trail for a task
-- bd update "$task_id" --set-metadata <field>=<value> : update a bead's metadata
-- bd merge-slot create : create a merge slot for a project
-- bd merge-slot check : check merge-slot availablility
-- bd merge-slot acquire
-- bd merge-slot release
+```bash
+claude plugin marketplace add https://github.com/<owner>/claude-sdlc
+claude plugin install sdlc@claude-sdlc
+```
 
-### The plugin
+Then, in Claude Code (run `/reload-plugins` if a session was already open):
 
-Now to the plugin itself
+```text
+/sdlc:setup     # once per machine: checks beads, worktrunk and the other tools, recommends companions
+/sdlc:init      # once per project: beads, integration mode, target branch, local settings
+```
 
-#### Agents
-- orchestrator
-- reviewer
-- worker
-- resolver
+Or paste this prompt into Claude Code:
 
-#### Commands
-- sdlc:open : open a new SDLC project
+> Install the sdlc Claude Code plugin: run `claude plugin marketplace add https://github.com/<owner>/claude-sdlc`, then `claude plugin install sdlc@claude-sdlc`, then `/reload-plugins`. Then run `/sdlc:setup`, and `/sdlc:init` in this project.
 
-#### Skills
-- sdlc:split-plan : take a design spec, split the work in beads
-- sdlc:split-task : take an existing bead, split it further
-- sdlc:dedup : look for similar beads
-- sdlc:orchestrate : prioritize beads, decide to open a new branch or not, and assign to agents
-- sdlc:create-merge-queue : create a branch and a merge queue for a bead
-- sdlc:dispatch : dispatch a bead to an agent, in a worktree
-- sdlc:review : review a bead for quality, security, and definition of done
-- sdlc:merge : merge a worktree back into the its parent branch efficiently and close the bead or wait for resolution
+To try it from a local clone, for one session only:
 
-#### Inspirational sources
+```bash
+claude --plugin-dir /path/to/claude-sdlc
+```
 
-Interesting inspirations : 
-https://github.com/dsifry/metaswarm
-https://github.com/AvivK5498/The-Claude-Protocol
+## Quick start
+
+The whole workflow in one command:
+
+```text
+/sdlc:build add a page that lists the latest orders
+```
+
+1. `build` enters plan mode, writes the design and the task graph into the plan, and asks for your approval.
+2. It then writes the design document, creates the tasks, commits both, and dispatches.
+
+Step by step:
+
+```text
+/sdlc:design add a page that lists the latest orders
+/sdlc:split-plan docs/design/latest-orders-page.md
+/sdlc:dispatch
+```
+
+After a restart, or to pick up work in progress, run `/sdlc:dispatch` again.
+
+## Skills
+
+| Skill | What it does |
+|---|---|
+| `/sdlc:setup` | Checks this machine for the tools sdlc needs, and recommends companions (rtk, a reading agent, reviewer and specialist agents) |
+| `/sdlc:init` | Prepares a project: beads, integration mode, target branch, `.claude/sdlc.local.md`, `.gitignore` |
+| `/sdlc:build <request>` | Runs design and split in plan mode for your approval, then creates and dispatches the tasks |
+| `/sdlc:design <request>` | Finds prior art, clears up ambiguity, and writes a design document |
+| `/sdlc:split-plan [docs] [prompt]` | Splits a design, a plan-mode plan or a prompt into a beads task graph |
+| `/sdlc:split-task <id>` | Splits one existing bead into child tasks |
+| `/sdlc:create-task <request>` | Creates a single task that dispatch can run |
+| `/sdlc:dispatch [epic]` | Supervises the work: starts workers in work order, follows them, and resumes crashed ones |
+| `/sdlc:status` | Shows where workers run, crashed or stopped tasks, and the ready queue |
+| `/sdlc:stats [epic]` | Shows cost, duration, models and agents per task and per epic |
+| `/sdlc:logs <id>` | Shows what a task's workers did |
+
+## Configuration
+
+Per project and per machine, in `.claude/sdlc.local.md`:
+
+```markdown
+---
+parallel: 3          # workers at a time on this machine (default 2)
+design_dir: docs/specs
+workflow: build      # route new work to /sdlc:build automatically
+---
+```
+
+Shared by everyone using the repository, in beads:
+
+```bash
+bd config set custom.dispatch.integration epic-merge   # direct (default), epic-merge or epic-pr
+bd config set custom.dispatch.target main              # branch the work ends up in (default main)
+```
+
+Tasks can carry hints for their worker: `execution_agent_type`, `execution_suggested_model` and `execution_reasoning_effort`. See [configuration](docs/configuration.md).
+
+## Documentation
+
+- [Workflow](docs/workflow.md): design, split, dispatch, the worker lifecycle, integration modes, crash recovery
+- [Beads usage](docs/beads.md): task fields, metadata keys, event beads, merge queues, gates
+- [Configuration](docs/configuration.md): settings, integration modes, hooks
+- [Harnesses](docs/harnesses.md): what is specific to Claude Code, and running on Codex, OpenCode or Ollama
+- [Roadmap](docs/roadmap.md): what is planned, including GitHub Issues as a tracker
+- [Development](docs/development.md): repository layout, conventions, tests
+
+## Other harnesses
+
+sdlc runs on Claude Code today. The Claude-specific parts sit in a few places: how a worker session is started and resumed, how its log is read, and the hooks. Codex CLI and OpenCode have close equivalents for each, and Ollama can serve local models to all three. [Harnesses](docs/harnesses.md) maps them out.
+
+## Roadmap
+
+Highlights from [the roadmap](docs/roadmap.md):
+- GitHub Issues, and other trackers, alongside beads
+- worker sessions on Codex CLI and OpenCode, and local models through Ollama
+- several machines sharing the queue
+- review agents and human gates before merging
+- deduplication of similar tasks
+
+## Inspirations
+
+- [metaswarm](https://github.com/dsifry/metaswarm)
+- [The Claude Protocol](https://github.com/AvivK5498/The-Claude-Protocol)
+
+## License
+
+[MIT](LICENSE)
