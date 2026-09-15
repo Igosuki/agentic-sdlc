@@ -32,7 +32,7 @@ Options:
 
 Exit codes: 0 ended (idle or --once), 2 invalid arguments."""
 
-NO_OUTCOME = ("", "running")  # decision 2: "running" is a legacy value, kept as a synonym for unset.
+NO_OUTCOME = ("", "running")  # "running" is a legacy value, kept as a synonym for unset.
 
 
 def bd_json(*args):

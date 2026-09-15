@@ -51,8 +51,8 @@ base=$(get .metadata.dispatch_base)
 state=$(get .metadata.dispatch_state)
 log="$(git rev-parse --path-format=absolute --git-common-dir)/sdlc/logs/$id-$session.jsonl"
 
-# decision 2: no outcome recorded means dispatch_state is empty, or still "running"
-# for a task claimed before that value was retired.
+# No outcome recorded means dispatch_state is empty, or still "running" for a bead
+# claimed before dispatch_state existed.
 if [[ "$(get .status)" != in_progress || -z "$session" || ( -n "$state" && "$state" != running ) ]]; then
   echo "error: $id has no dispatched worker to resume (status $(get .status), dispatch_state: $state)" >&2
   exit 2

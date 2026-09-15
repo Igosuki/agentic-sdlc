@@ -82,7 +82,7 @@ for ref in "$parent" "${after[@]}"; do
 done
 
 # A task added under an epic that has already started integrating (or finished)
-# can merge after the epic branch is gone, or never be scheduled at all: decision 1.
+# can merge after the epic branch is gone, or never be scheduled at all.
 integration_id=""
 if [[ -n "$parent" ]] && bd show "$parent" --json >/dev/null 2>&1; then
   parent_json=$(bd show "$parent" --json | jq '.[0]')

@@ -27,7 +27,7 @@ Options:
 
 Exit codes: 0 listed, 2 invalid arguments."""
 
-NO_OUTCOME = ("", "running")  # decision 2: "running" is a legacy value, kept as a synonym for unset.
+NO_OUTCOME = ("", "running")  # "running" is a legacy value, kept as a synonym for unset.
 
 
 def bd_json(*args):
@@ -146,8 +146,8 @@ def _oneline(text, limit=160):
 
 
 def crash_log_evidence(path):
-    """Worker runs, last result, and the last events from a task's log: the same
-    evidence workers.sh used to print, from tool calls, text and tool results."""
+    """Worker runs, last result, and the last events from a task's log, drawn from
+    tool calls, text and tool results."""
     entries = read_jsonl(path)
     runs = sum(1 for e in entries if e.get("type") == "dispatch_run")
     result = None

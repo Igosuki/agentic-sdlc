@@ -104,6 +104,25 @@ class TestLogs(BdRepoTestCase):
         self.assertEqual(lines[1], full[0])  # the session header is repeated
         self.assertEqual(lines[2:], full[-2:])
 
+    def test_rolled_back_session_falls_back_to_the_wt_file(self):
+        task = self.create("create", "--title", "Task", "--type", "task")
+        session = "s1"
+        with open(self.log_path(task, session) + ".wt", "w") as f:
+            f.write("could not create the worktree\n")
+        result = self.logs(task)
+        self.assertIn("could not create the worktree", result.stdout)
+        self.assertNotIn("never dispatched", result.stdout)
+
+    def test_rolled_back_session_fallback_does_not_match_a_longer_task_id(self):
+        task = self.create("create", "--title", "Task", "--type", "task")
+        with open(self.log_path(task, "s1") + ".wt", "w") as f:
+            f.write("this task's error\n")
+        with open(self.log_path(f"{task}9", "s2") + ".wt", "w") as f:
+            f.write("a different task's error\n")
+        result = self.logs(task)
+        self.assertIn("this task's error", result.stdout)
+        self.assertNotIn("a different task's error", result.stdout)
+
     def test_raw_lists_the_log_files(self):
         task = self.create("create", "--title", "Task", "--type", "task")
         self.dispatch(task, "s1")

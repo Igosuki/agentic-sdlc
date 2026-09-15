@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# In a worker session, blocks the first attempt to stop while the task is claimed by this session (decision
-# 2: in_progress, dispatch_session matching, no outcome recorded) and the worker hasn't commented since it
-# was dispatched. A second attempt (stop_hook_active) is let through.
+# In a worker session, blocks the first attempt to stop while the task is claimed by this session
+# (in_progress, dispatch_session matching, no outcome recorded) and the worker hasn't commented since
+# it was dispatched. A second attempt (stop_hook_active) is let through.
 set -euo pipefail
 [[ -n "${DISPATCH_TASK:-}" ]] || { cat >/dev/null; exit 0; }
 input=$(cat)

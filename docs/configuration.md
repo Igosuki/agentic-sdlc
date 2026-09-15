@@ -76,7 +76,7 @@ The plugin ships `hooks/hooks.json`. The worker hooks only act in worker session
 | Hook | In a worker session | Elsewhere |
 |---|---|---|
 | SessionStart | restates the task's lifecycle, after a resume or a compaction too | with `workflow: build`, routes new work to `/sdlc:build` |
-| PreToolUse (Bash) | denies `bd close`, `bd update --status closed`, `wt merge`, `git push`, `bd gate resolve`/`bd gate close`, and setting `review` or `dispatch_review*` metadata: `finish-task.sh` does those | nothing |
+| PreToolUse (Bash) | denies `bd close`, `bd update --status closed`, `wt merge`, `git <options> push`, `gh pr merge`, `bd gate resolve`/`bd gate close`, and setting `review` or `dispatch_review*` metadata: `finish-task.sh` does those | nothing |
 | Stop | blocks the first attempt to end while the task is open and the worker hasn't commented since it was dispatched | nothing |
 
 `worker-guard.sh` is a guardrail, not a security boundary: it matches specific command shapes, so a worker set on evading it can still push, merge or close directly.

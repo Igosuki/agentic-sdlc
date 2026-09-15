@@ -90,9 +90,9 @@ One ephemeral bead per branch, titled `merge queue <branch>`. Its id is kept in 
   bd gate create --type=human --blocks <task> --reason "..."
   bd gate resolve <gate>
   ```
-- **`human`, the review gate:** for a task with `review=human`, `finish-task.sh` creates this gate itself (`dispatch_review_gate`) instead of merging, and sets `dispatch_state=awaiting-review`. Resolve it the same way, `bd gate resolve <gate>`; `resume-reviewed.sh` then picks the task back up. `workers.sh` prints the exact commands for a task waiting in this state.
+- **`human`, the review gate:** for a task with `review=human`, `finish-task.sh` creates this gate itself (`dispatch_review_gate`) instead of merging, and sets `dispatch_state=awaiting-review`. Resolve it the same way, `bd gate resolve <gate>`; `resume-reviewed.sh` then picks the task back up. `workers.py` prints the exact commands for a task waiting in this state.
 
-A gate can block a task but not an epic. `watch.sh` runs `bd gate check` on every round.
+A gate can block a task but not an epic. `watch.py` runs `bd gate check` on every round.
 
 ## Configuration
 

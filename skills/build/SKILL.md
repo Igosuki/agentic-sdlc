@@ -2,7 +2,7 @@
 name: build
 description: "Take a request from idea to integrated code: design and task split in plan mode for the user's approval, then write the design, create the beads tasks, commit and dispatch workers. Use when the user asks to build, add or change something end to end with sdlc, or when this project routes new work here (workflow: build). For a single phase, use sdlc:design, sdlc:split-plan or sdlc:dispatch."
 argument-hint: "<what to build>"
-allowed-tools: Bash(${CLAUDE_SKILL_DIR}/../dispatch/scripts/settings.sh *), Bash(git branch --show-current), Bash(git add *), Bash(git commit *)
+allowed-tools: Bash(${CLAUDE_SKILL_DIR}/../dispatch/scripts/settings.sh *), Bash(git branch --show-current), Bash(git add -- *.md), Bash(git commit -m *)
 ---
 
 # Build
@@ -40,7 +40,7 @@ Compare the current branch above with the target from the settings above. If the
 Once the plan is approved (skip 1 and 2 below without plan mode — step 1 above already wrote the document and created the tasks):
 1. Write the design document to its location.
 2. Invoke `sdlc:split-plan` to create the approved task graph. It doesn't ask for approval again.
-3. Switch to the target branch if step 1 found a switch was needed — already approved with the plan, so no need to ask again. Then commit the design document there: `git add` it and `git commit`. The reason is the design document itself: tasks live in Dolt, not git, so there's nothing else to commit. Workers branch from committed code, so an uncommitted document is invisible to them.
+3. Switch to the target branch if step 1 found a switch was needed — already approved with the plan, so no need to ask again. Then commit the design document there: `git add -- <path>`, then `git commit -m <message>`. The reason is the design document itself: tasks live in Dolt, not git, so there's nothing else to commit. Workers branch from committed code, so an uncommitted document is invisible to them.
 
 ## 3. Dispatch
 

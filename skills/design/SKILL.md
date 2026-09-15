@@ -4,7 +4,7 @@ description: Turn a product or feature request into a design document that remov
 argument-hint: "<what to build>"
 model: opus
 effort: high
-allowed-tools: Bash(${CLAUDE_SKILL_DIR}/../dispatch/scripts/settings.sh *)
+allowed-tools: Bash(${CLAUDE_SKILL_DIR}/../dispatch/scripts/settings.sh *), Bash(bd *)
 ---
 
 # Design

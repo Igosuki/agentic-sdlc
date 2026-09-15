@@ -124,7 +124,7 @@ The first time a command runs on a machine, `wt` needs a person to approve it: `
 ## Crash recovery
 
 A worker's state lives in beads, its worktree and its logs, so nothing is lost when a process or the machine dies:
-- **A crashed worker** is claimed (`in_progress` with a `dispatch_session`), but no process runs its session and no attempt outcome is recorded (`dispatch_state` is empty, or `running` on a task claimed before this decision landed).
+- **A crashed worker** is claimed (`in_progress` with a `dispatch_session`), but no process runs its session and no attempt outcome is recorded (`dispatch_state` is empty, or `running` on a bead claimed before `dispatch_state` existed).
 - **Diagnosis:** `workers.py` prints the evidence to decide on resuming: worktree, commits, uncommitted files, whether the Claude transcript exists, the last events, stderr, and the boot time.
 - **Resuming:** `resume-task.sh` starts `claude -p --resume <session>` in the same worktree, so the worker continues its own conversation.
 - **After a reboot:** run `/sdlc:dispatch`. It resumes crashed workers when the cause is gone, and reports those it shouldn't retry, such as a usage limit or a failure that repeats.

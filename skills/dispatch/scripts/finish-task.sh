@@ -63,8 +63,8 @@ branch=$(get "$task" .metadata.dispatch_branch)
 role=$(get "$task" .metadata.dispatch_role)
 session=$(get "$task" .metadata.dispatch_session)
 state=$(get "$task" .metadata.dispatch_state)
-# decision 2: claimed (in_progress, a session) with no outcome recorded yet. Until T3 removes
-# the running value, "no outcome" also means dispatch_state is still "running".
+# Claimed (in_progress, a session) with no outcome recorded yet. A bead claimed before
+# dispatch_state existed can still hold "running", which also counts as no outcome.
 if [[ "$(get "$task" .status)" != in_progress || -z "$session" || -z "$base" || -z "$branch" || ( -n "$state" && "$state" != running ) ]]; then
   echo "error: $id has no dispatched worker (status $(get "$task" .status), dispatch_state: $state)" >&2
   exit 2
@@ -259,7 +259,7 @@ bd close "$id" --reason "merged into $base" >/dev/null
 bd update "$id" --set-metadata dispatch_state=merged >/dev/null
 echo "merged $id into $base and closed it"
 
-# decision 1: a parent task closes once its last child does, since its code merged along with it.
+# A parent task closes once its last child does, since its code merged along with it.
 parents=$(bd list --all --limit 0 --json | "$dir/tasks.py" parents-to-close "$id")
 while IFS= read -r parent_id; do
   [[ -n "$parent_id" ]] || continue

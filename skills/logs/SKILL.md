@@ -1,6 +1,6 @@
 ---
 name: logs
-description: Show what the workers of a dispatched task did, for each attempt: messages, tool calls, results and cost, from the worker logs. Read-only.
+description: "Show what the workers of a dispatched task did, for each attempt: messages, tool calls, results and cost, from the worker logs. Read-only."
 argument-hint: "<task-id>"
 disable-model-invocation: true
 allowed-tools: Bash(${CLAUDE_SKILL_DIR}/../dispatch/scripts/logs.py *)

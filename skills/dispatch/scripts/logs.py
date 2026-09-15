@@ -139,8 +139,8 @@ def session_block(task_id, session, log_path):
             lines.append("── recorded")
             lines.extend(read_lines(record_path))
     else:
-        # run-task.sh sets dispatch_session before `wt switch`; if that fails, only
-        # <log>.wt (its stderr) exists.
+        # A failed `wt switch` leaves only <log>.wt (its stderr); run-task.sh's rollback then
+        # removes dispatch_session, so this branch fires only when a bd event still names the session.
         wt_path = log_path + ".wt"
         if os.path.exists(wt_path) and os.path.getsize(wt_path) > 0:
             lines.append(f"(no log at {log_path}, the worktree failed: {wt_path})")
@@ -236,8 +236,21 @@ def main(argv=None):
     events = bd_json("list", "--type", "event", "--all", "--limit", "0")
     sessions = collect_sessions(events, args.task_id, current_session)
     if not sessions:
-        print(f"{args.task_id} was never dispatched")
-        return 1
+        # A worktree failure rolls dispatch_session back off the bead, so a session that
+        # never got that far only survives as a <task>-<session>.jsonl.wt file.
+        wt_pattern = os.path.join(logs_dir, f"{glob.escape(args.task_id)}-*.jsonl.wt")
+        wt_files = sorted(glob.glob(wt_pattern))
+        if not wt_files:
+            print(f"{args.task_id} was never dispatched")
+            return 1
+        if args.raw:
+            print("\n".join(wt_files))
+            return 0
+        print(f"{args.task_id} has no recorded dispatch session; the worktree failed before one was kept:")
+        for wt_path in wt_files:
+            print(f"═══ {os.path.basename(wt_path)}")
+            print("\n".join(read_lines(wt_path)))
+        return 0
 
     if args.raw:
         for session in sessions:

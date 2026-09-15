@@ -61,8 +61,8 @@ def parents_to_close(by_id, task_id):
 
 
 def dispatch_order(all_tasks, ready_tasks, only_epic=None):
-    """today's next-tasks.sh order: epics already started first, then priority/age,
-    then within an epic the tasks that unblock the most others."""
+    """Epics already started first, then priority/age, then within an epic the tasks
+    that unblock the most others."""
     by_id = index_by_id(all_tasks)
     parents = {t["parent"] for t in all_tasks if t.get("parent")}
 
@@ -103,7 +103,7 @@ def dispatch_order(all_tasks, ready_tasks, only_epic=None):
 
 
 def _process_alive(task_id, session):
-    # ignores --fork-session: a user inspecting the transcript, not the worker (dispatch minor 2).
+    # ignores --fork-session: a user inspecting the transcript, not the worker.
     pattern = rf"(run-task\.sh {re.escape(task_id)}\b|--(session-id|resume) {re.escape(session)}\b)"
     try:
         out = subprocess.run(["pgrep", "-af", pattern], capture_output=True, text=True)
@@ -113,7 +113,7 @@ def _process_alive(task_id, session):
 
 
 def worker_running(task):
-    """Decision 2: claimed, a process exists, and no attempt outcome is recorded yet."""
+    """Claimed, a process exists, and no attempt outcome is recorded yet."""
     if task.get("status") != "in_progress":
         return False
     metadata = task.get("metadata") or {}
@@ -121,7 +121,7 @@ def worker_running(task):
     if not session:
         return False
     state = metadata.get("dispatch_state") or ""
-    if state not in ("", "running"):  # until T3 lands, "running" still means no outcome
+    if state not in ("", "running"):  # a bead written before dispatch_state existed can still hold "running"
         return False
     return _process_alive(task.get("id"), session)
 
