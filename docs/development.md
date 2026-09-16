@@ -7,19 +7,21 @@
 agents/                 reader.md (read-only, answers one question), supervisor.md (dispatches
                         and follows workers), worker.md (owns one task), integrator.md (owns
                         an epic's integration task)
-commands/              entry points: setup, init, build, dispatch, create-task, status, stats, logs
 hooks/                 hooks.json and the worker hooks
 scripts/               every executable: worker lifecycle, task creation, project checks
 skills/
   design/              design documents
   split/               task graphs, from a doc, a plan, a prompt or an existing bead
+  build/, dispatch/, create-task/,
+  setup/, init/, status/, stats/, logs/
+                        entry points, one SKILL.md each
 tests/wild/            end-to-end runs in a sandbox
 docs/                  this documentation
 ```
 
 ## Conventions
 
-- **One skill at a time, scripts only when a skill needs them.** Scripts live in `scripts/` at the plugin root; commands, skills, hooks and workers call them as `${CLAUDE_PLUGIN_ROOT}/scripts/<name>`.
+- **One skill at a time, scripts only when a skill needs them.** Scripts live in `scripts/` at the plugin root; skills, hooks and workers call them as `${CLAUDE_PLUGIN_ROOT}/scripts/<name>`.
 - **Bash + `jq`** for a script that runs commands and reads a few fields from JSON. **Python 3.9+, standard library only,** for a script that walks the task graph, sorts, totals, keeps state across rounds or renders logs. Shared task-graph logic lives in `scripts/tasks.py`, reached the way `status` and `logs` already call dispatch's scripts. Bead data is never passed as a command-line argument: Linux caps a single argument at 128 KiB, so scripts read `bd`'s JSON through a pipe instead.
 - **Scripts explain themselves:** `--help` prints the usage, and invalid input lists every problem, prints the usage and exits 2. Skills don't document the scripts they call.
 - **Skills call scripts** through `${CLAUDE_PLUGIN_ROOT}`, pre-approved in `allowed-tools`, so the script's source never enters the context.
