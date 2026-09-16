@@ -2,9 +2,10 @@
 # Headless run of the whole flow on a new project: design, split, add a
 # split task another task waits on, then dispatch until the epic is idle.
 # /sdlc:dispatch only confirms and starts the supervisor, and there's no one
-# here to confirm with, so this drives the sdlc:supervisor agent directly.
-# It follows its own workers (Monitor + watch.py) until idle, so one call
-# with --under and --parallel 2 replaces polling here.
+# here to confirm with, so this drives the sdlc:supervisor agent directly,
+# with --under and --parallel 2. The supervisor ends its run as soon as a
+# task needs a person, same as /sdlc:dispatch would restart it, so this
+# calls it again until nothing is running and nothing is ready.
 set -euo pipefail
 
 plugin_dir="$(cd "$(dirname "$(readlink -f "$0")")/../.." && pwd)"
@@ -59,7 +60,15 @@ else
   echo "no task under $epic to split, skipping"
 fi
 
-step 4-dispatch "--agent sdlc:supervisor" "$epic --parallel 2"
+attempt=0
+while :; do
+  attempt=$((attempt + 1))
+  step "4-dispatch-$attempt" "--agent sdlc:supervisor" "$epic --parallel 2"
+  running=$("$scripts/workers.py" --under "$epic" --alive-count)
+  ready=$("$scripts/next-tasks.py" --under "$epic" --ids)
+  [[ "$running" == 0 && -z "$ready" ]] && break
+  (( attempt < 20 )) || { echo "dispatch: gave up after $attempt supervisor runs"; break; }
+done
 
 {
   echo "## Result"

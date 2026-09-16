@@ -42,12 +42,16 @@ Split always creates beads, then shows the graph for approval. It doesn't run in
 
 ## 3. Dispatch
 
-`/sdlc:dispatch [epic]` confirms what's about to happen with the user, then starts the `sdlc:supervisor` agent (`agents/supervisor.md`), on Sonnet, in the background, and follows what it reports. The supervisor holds no state of its own — everything lives in beads and on disk, so any session can take over at any time — and it can't ask the user anything, so it reports what it wants instead of deciding, leaving that to `/sdlc:dispatch`.
+`/sdlc:dispatch [id...]` takes any mix of task, parent task and epic ids, or none for all dispatchable work; each named id becomes a `--under <id>`. A named bead that isn't ready gets checked against its blockers: the skill says what it's waiting for and offers to dispatch those too. It confirms what's about to happen with the user, then starts the `sdlc:supervisor` agent (`agents/supervisor.md`), on Sonnet, in the background.
+
+The supervisor holds no state of its own — everything lives in beads and on disk, so any session can take over at any time — and it can't ask the user anything, so it ends its run and reports the moment a task newly needs a person (awaiting review, stopped, failed, or a `Can't` task whose transcript or worktree is gone), instead of collecting that for a later report. `/sdlc:dispatch` starts it again right away, so the rest of the work keeps going, then acts: it suggests `/sdlc:review <task>` or `/sdlc:recover <task>`, or asks the user about reopening a `Can't` task. It passes the ids it already reported back on every restart, so the same still-waiting task doesn't end the supervisor's run again before anyone has acted on it.
 
 1. **Look:** `workers.py` shows dispatched tasks and their state. `next-tasks.py` shows ready tasks in work order.
-2. **Handle crashed and stopped workers.** A crashed worker is resumed or reported; one whose transcript or worktree is gone is reported, with what reopening it needs, for `/sdlc:dispatch` to ask the user and act on. A stopped worker is reported with its reason.
-3. **Dispatch:** `dispatch-next.sh` starts ready tasks up to the parallel limit.
-4. **Follow:** `watch.py` runs under the Monitor tool and prints an event for each task that becomes ready, each worker that ends or crashes, and each epic that closes. The supervisor reacts to each event, until nothing is running and nothing is ready, then reports back.
+2. **Handle crashed and stopped workers.** A crashed worker is resumed automatically when it can be; anything else here needs a person.
+3. **Dispatch:** `dispatch-next.sh` starts ready tasks up to the parallel limit, every run, even when step 2 already has something to report.
+4. **Follow:** `watch.py` runs under the Monitor tool and prints an event for each task that becomes ready, each worker that ends or crashes, and each epic that closes. The supervisor keeps going on events that don't need a person, and stops on the first one that does. On `idle` (nothing running and nothing ready), it reports the full summary instead.
+
+In epic-merge and epic-pr modes, the first task dispatched creates the epic branch and an integration task that waits for every other task of the epic.
 
 ### Work order
 

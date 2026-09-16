@@ -1,7 +1,7 @@
 ---
 name: dispatch
-description: Supervise the implementation of beads tasks. Confirms what's about to happen, then starts a supervisor that dispatches ready tasks in work order, within the parallel limit, to worker sessions that each implement, merge and close one task in its own worktree, and follows them until nothing is left. Takes an epic, or all dispatchable work when given none. Use when tasks from sdlc:split are ready to implement, or after a restart to pick up dispatched work.
-argument-hint: "[epic-id] [--parallel N]"
+description: Supervise the implementation of beads tasks. Confirms what's about to happen, then starts a supervisor that dispatches ready tasks in work order, within the parallel limit, to worker sessions that each implement, merge and close one task in its own worktree, and reports the moment a person is needed. Takes any mix of task, parent task and epic ids, or all dispatchable work when given none. Use when tasks from sdlc:split are ready to implement, or after a restart to pick up dispatched work.
+argument-hint: "[id...] [--parallel N]"
 model: sonnet
 allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/settings.sh *), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/workers.py *), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/next-tasks.py *), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/merge-queue.sh *), Bash(bd *), Bash(wt remove *), Agent
 ---
@@ -21,20 +21,26 @@ Dispatch queue:
 
 Each task is carried by a worker: a Claude session in the task's own worktree that implements the task, merges it and closes it. The `sdlc:supervisor` agent starts and follows workers; you don't implement, merge or follow workers yourself.
 
-When the arguments name an epic, it's the one the supervisor works on; otherwise all dispatchable work. When they give a parallel limit, it's the one the supervisor passes on to `dispatch-next.sh`.
+The arguments are any mix of task, parent task and epic ids, in any order, or none for all dispatchable work. Each named id becomes a `--under <id>` for the supervisor: its scope is those beads and their descendants. When the arguments give a parallel limit, it's the one the supervisor passes on to `dispatch-next.sh`.
 
-## 1. Confirm
+## 1. Check what's named
 
-The workers and dispatch queue above are what's about to happen. Confirm with AskUserQuestion: the tasks that will start, the parallel limit, the integration mode and the target branch (from the settings above). Skip this if `sdlc:build` invoked this command after its own plan already covered dispatching — it doesn't need a second approval. If AskUserQuestion isn't available (headless session), go ahead without asking. Never ask in plain text and stop.
+For each named id, `bd show <id> --json` and look at its `dependencies` where `dependency_type` is `blocks` and `status` isn't `closed`. If there are any, the bead isn't ready: tell the user what it's waiting for (their ids and titles), and offer with AskUserQuestion to add those blockers to the dispatch too. If they agree, add the blockers' ids to the set of ids being dispatched.
 
-## 2. Start the supervisor
+## 2. Confirm
 
-Start `sdlc:supervisor` with the Agent tool (`subagent_type: sdlc:supervisor`), in the background, so this session stays usable while it runs. Its prompt is the epic id, if the arguments name one, and the parallel limit, if they give one.
+The workers and dispatch queue above are what's about to happen. Confirm with AskUserQuestion: the tasks that will start, the parallel limit, the integration mode and the target branch (from the settings above). In epic-merge and epic-pr modes, say that the first task dispatched creates the epic branch and an integration task that waits for the rest of the epic. Skip this if `sdlc:build` invoked this command after its own plan already covered dispatching — it doesn't need a second approval. If AskUserQuestion isn't available (headless session), go ahead without asking. Never ask in plain text and stop.
 
-## 3. Relay and decide
+## 3. Start the supervisor
 
-The supervisor reports back once it has nothing left to watch: epics and tasks closed, stopped, failed or crashed tasks with their reasons and next steps, tasks waiting on a pull request, `Can't` tasks it left claimed because their transcript or worktree is gone, and the cost. Relay this to the user as it comes in.
+Start `sdlc:supervisor` with the Agent tool (`subagent_type: sdlc:supervisor`), in the background, so this session stays usable while it runs. Its prompt is the ids from the arguments (and any added in step 1), if there are any, and the parallel limit, if the arguments give one.
 
-For each `Can't` task, ask the user with AskUserQuestion whether to reopen it. If they agree, run all three steps the supervisor named, in order: `${CLAUDE_PLUGIN_ROOT}/scripts/merge-queue.sh release <dispatch_base> <task>`, so the dead session stops holding that branch's queue and the next task can merge; `wt remove -D <dispatch_branch>` so the branch can be reused; then `bd update <task> --status open --unset-metadata dispatch_session --unset-metadata dispatch_host --unset-metadata dispatch_base --unset-metadata dispatch_branch --unset-metadata dispatch_started`. For anything else the supervisor flagged that needs a person, ask the same way, and do what they decide.
+## 4. Relay and decide
 
-Once you've acted on a decision, start `sdlc:supervisor` again (Agent tool, in the background, same epic and parallel limit) so dispatching continues — a freshly reopened task, or anything else that changed, only gets picked up by a new look at beads.
+The supervisor ends its run and reports as soon as one task newly needs a person: awaiting review, stopped, failed, or a `Can't` task it left claimed because its transcript or worktree is gone. It also reports the full summary once nothing is left to watch: epics and tasks closed, tasks still waiting on a person, tasks waiting on a pull request, and the cost.
+
+Keep a list, for this session, of task ids you've already reported as needing a person. The moment a report comes in, start `sdlc:supervisor` again (Agent tool, in the background, same ids and parallel limit, plus `already reported: <ids>` from that list if it isn't empty) so dispatching keeps going while you deal with the report, without the same task ending its run again before anyone has acted. Then act on what it sent:
+- **Awaiting review:** suggest `/sdlc:review <task>`. Add the task to the already-reported list.
+- **Stopped or failed:** suggest `/sdlc:recover <task>`. Add the task to the already-reported list.
+- **Can't:** ask the user with AskUserQuestion whether to reopen it. If they agree, run all three steps the supervisor named, in order: `${CLAUDE_PLUGIN_ROOT}/scripts/merge-queue.sh release <dispatch_base> <task>`, so the dead session stops holding that branch's queue and the next task can merge; `wt remove -D <dispatch_branch>` so the branch can be reused; then `bd update <task> --status open --unset-metadata dispatch_session --unset-metadata dispatch_host --unset-metadata dispatch_base --unset-metadata dispatch_branch --unset-metadata dispatch_started`, and drop it from the already-reported list — reopened, it isn't waiting on a person any more. A freshly reopened task only gets picked up by a new look at beads, which the supervisor you just restarted will take. If they decline, add it to the already-reported list so it isn't reported again this session.
+- **The full summary:** relay it to the user, including anything it still lists as waiting on a person. Drop from the already-reported list any task the summary no longer lists that way — it's been reviewed, recovered or otherwise resolved outside this session.

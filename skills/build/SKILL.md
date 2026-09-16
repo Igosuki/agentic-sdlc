@@ -39,7 +39,7 @@ Compare the current branch above with the target from the settings above. If the
 
 ## 3. Dispatch
 
-Invoke `sdlc:dispatch` with the epic id from Create. The plan already covered dispatching, the integration mode, target branch, parallel limit and review level, so dispatch doesn't need to ask again. It dispatches the tasks, follows the workers until nothing is left, and reports.
+Invoke `sdlc:dispatch` with the epic id from Create. The plan already covered dispatching, the integration mode, target branch, parallel limit and review level, so dispatch doesn't need to ask again. It dispatches the tasks and reports the moment a task needs a person, restarting itself to keep the rest going, until nothing is left.
 
 ## Headless
 
