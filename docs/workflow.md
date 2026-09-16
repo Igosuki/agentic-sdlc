@@ -133,5 +133,5 @@ A worker's state lives in beads, its worktree and its logs, so nothing is lost w
 
 - `/sdlc:status`: workers, the ready queue and settings
 - `/sdlc:stats [epic]`: cost, duration, models and agents, per task and per epic
-- `/sdlc:logs <task>`, or `skills/dispatch/scripts/logs.py <task> [--follow]` in a terminal: what each attempt did
+- `/sdlc:logs <task>`, or `scripts/logs.py <task> [--follow]` in a terminal: what each attempt did
 - `claude --resume <session> --fork-session`: a worker's whole conversation, without changing it

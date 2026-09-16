@@ -14,7 +14,7 @@ git init -q -b main
 printf '# Demo app\n\nA small demo web app.\n' > README.md
 git add README.md && git commit -q -m "Initial README"
 # split-plan points to /sdlc:init instead of initializing beads itself.
-$dry_run || "$plugin_dir/skills/init/scripts/init.sh"
+$dry_run || "$plugin_dir/scripts/init.sh"
 echo "sandbox: $base"
 
 step() {

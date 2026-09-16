@@ -18,6 +18,6 @@ started=$(jq -r '.metadata.dispatch_started // empty' <<<"$task")
 comments=$(bd comments "$DISPATCH_TASK" --json 2>/dev/null | jq --arg s "$started" '[.[]? | select(.created_at >= $s)] | length' 2>/dev/null) || comments=0
 [[ "$comments" -eq 0 ]] || exit 0
 
-finish="${CLAUDE_PLUGIN_ROOT}/skills/dispatch/scripts/finish-task.sh $DISPATCH_TASK"
+finish="${CLAUDE_PLUGIN_ROOT}/scripts/finish-task.sh $DISPATCH_TASK"
 jq -cn --arg r "Task $DISPATCH_TASK isn't closed. Commit your work and run $finish. If you can't finish, record what's missing with: bd comments add $DISPATCH_TASK \"<what's missing>\"." \
   '{decision: "block", reason: $r}'

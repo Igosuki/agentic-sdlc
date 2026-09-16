@@ -3,7 +3,7 @@ name: split-task
 description: Split an existing bead (task or epic) into child tasks with acceptance criteria, scope, verify command and dependencies. Use when a bead is too large, or was created by hand without a breakdown.
 argument-hint: "<bead-id> [instructions]"
 model: opus
-allowed-tools: Bash(${CLAUDE_SKILL_DIR}/../create-task/scripts/create-task.sh *), Bash(${CLAUDE_PLUGIN_ROOT}/skills/create-task/scripts/create-task.sh *), Bash(bd *), Bash(wt remove *), Read(/${CLAUDE_SKILL_DIR}/../split-plan/references/**), Read(/${CLAUDE_PLUGIN_ROOT}/skills/split-plan/references/**)
+allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/create-task.sh *), Bash(bd *), Bash(wt remove *), Read(/${CLAUDE_SKILL_DIR}/../split-plan/references/**), Read(/${CLAUDE_PLUGIN_ROOT}/skills/split-plan/references/**)
 ---
 
 # Split task
@@ -47,7 +47,7 @@ Follow `${CLAUDE_SKILL_DIR}/../split-plan/references/task-rules.md` for sizing, 
 Create each child, in dependency order. Run the script with the path exactly as written. Use single quotes, and write an apostrophe as `'\''`:
 
 ```bash
-${CLAUDE_SKILL_DIR}/../create-task/scripts/create-task.sh --parent <bead-id> \
+${CLAUDE_PLUGIN_ROOT}/scripts/create-task.sh --parent <bead-id> \
   --title '<title>' --description '<details>' --acceptance '<checks>' \
   --scope '<path/,other/path>' --verify '<command>' \
   --complexity small|medium|large \

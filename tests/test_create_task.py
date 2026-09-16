@@ -6,7 +6,7 @@ import tempfile
 import unittest
 
 SCRIPT = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "..", "skills", "create-task", "scripts", "create-task.sh"
+    os.path.dirname(os.path.abspath(__file__)), "..", "scripts", "create-task.sh"
 )
 
 REQUIRED_TASK_ARGS = [

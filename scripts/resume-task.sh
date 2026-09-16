@@ -76,7 +76,7 @@ if [[ ${#errors[@]} -gt 0 ]]; then
 fi
 
 prompt=${prompt:-"Your session was interrupted before you finished. Check the state of the worktree, then continue task $id from where you stopped. If finish-task.sh says a person is needed, record it with bd comments add $id \"<what's needed>\" and stop."}
-plugin_root=$(cd "$dir/../../.." && pwd)
+plugin_root=$(cd "$dir/.." && pwd)
 worker=(env "DISPATCH_TASK=$id" claude -p --resume "$session" --permission-mode auto --output-format stream-json --verbose --forward-subagent-text
   --allowedTools "Bash($dir/finish-task.sh *)")
 # Installed as a plugin, workers load it so its hooks apply; installed as plain skills, there are no hooks.

@@ -192,7 +192,7 @@ This is your own git worktree, on branch $branch, created from $base. You own th
 Don't merge or close the task by other means."
 fi
 
-plugin_root=$(cd "$dir/../../.." && pwd)
+plugin_root=$(cd "$dir/.." && pwd)
 worker=(env "DISPATCH_TASK=$id" claude -p --session-id "$session" --permission-mode auto --output-format stream-json --verbose --forward-subagent-text
   --allowedTools "Bash($finish *)")
 # Installed as a plugin, workers load it so its hooks apply; installed as plain skills, there are no hooks.

@@ -3,7 +3,7 @@ name: split-plan
 description: Split a plan into a beads task graph (one or several epics, tasks, subtasks and dependencies, shaped by the agent), each task with acceptance criteria, scope and verify command. The plan can be markdown docs (for example from sdlc:design), a plan made in plan mode earlier in the conversation, or a plain prompt. Use when work needs to become beads tasks.
 argument-hint: "[doc paths...] [prompt or instructions]"
 model: opus
-allowed-tools: Bash(${CLAUDE_SKILL_DIR}/../create-task/scripts/create-task.sh *), Bash(${CLAUDE_PLUGIN_ROOT}/skills/create-task/scripts/create-task.sh *), Bash(bd *), Read(/${CLAUDE_SKILL_DIR}/references/**)
+allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/create-task.sh *), Bash(bd *), Read(/${CLAUDE_SKILL_DIR}/references/**)
 ---
 
 # Split plan
@@ -51,7 +51,7 @@ Follow `references/task-rules.md` for sizing, granularity, review level, shared 
 Create each bead in dependency order, running the script with the path exactly as written. Use single quotes, and write an apostrophe as `'\''`:
 
 ```bash
-${CLAUDE_SKILL_DIR}/../create-task/scripts/create-task.sh --title '<title>' --description '<details>' \
+${CLAUDE_PLUGIN_ROOT}/scripts/create-task.sh --title '<title>' --description '<details>' \
   --acceptance '<checks>' --scope '<path/,other/path>' --verify '<command>' \
   --complexity small|medium|large \
   [--type epic] [--parent <id>] [--after <id>]... [--design <doc>] \
@@ -66,7 +66,7 @@ A source that isn't committed on the target branch — a document named in the a
 
 Example:
 ```bash
-${CLAUDE_SKILL_DIR}/../create-task/scripts/create-task.sh --parent sdlc-a1b \
+${CLAUDE_PLUGIN_ROOT}/scripts/create-task.sh --parent sdlc-a1b \
   --title 'Implement user authentication' \
   --description 'JWT auth: POST /auth/login, token validation middleware, refresh token rotation. Uses the users table from the schema task.' \
   --acceptance 'Valid credentials return a token; invalid ones return 401; expired tokens are rejected' \

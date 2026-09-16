@@ -3,7 +3,7 @@ name: init
 description: Prepare the current project for sdlc. Initializes beads, sets the integration mode and target branch, creates .claude/sdlc.local.md, and ignores local files. Safe to run again. Use in a project before its first design or dispatch, or to change these settings.
 argument-hint: "[--integration direct|epic-merge|epic-pr] [--target BRANCH] [--parallel N] [--design-dir DIR] [--workflow build|none]"
 model: sonnet
-allowed-tools: Bash(${CLAUDE_SKILL_DIR}/scripts/init.sh *), Bash(${CLAUDE_SKILL_DIR}/scripts/checks.sh *), Bash(${CLAUDE_SKILL_DIR}/../dispatch/scripts/settings.sh *), Bash(bd config get custom.dispatch.integration *), Bash(bd config get custom.dispatch.target *), Bash(git branch --show-current *), Bash(git status --porcelain -- .gitignore .beads), Bash(git add -- .gitignore .beads), Bash(git commit -m "Ignore sdlc local files" -- .gitignore .beads)
+allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/init.sh *), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/checks.sh *), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/settings.sh *), Bash(bd config get custom.dispatch.integration *), Bash(bd config get custom.dispatch.target *), Bash(git branch --show-current *), Bash(git status --porcelain -- .gitignore .beads), Bash(git add -- .gitignore .beads), Bash(git commit -m "Ignore sdlc local files" -- .gitignore .beads)
 ---
 
 # Init
@@ -11,7 +11,7 @@ allowed-tools: Bash(${CLAUDE_SKILL_DIR}/scripts/init.sh *), Bash(${CLAUDE_SKILL_
 Arguments: $ARGUMENTS
 
 Current settings:
-!`${CLAUDE_SKILL_DIR}/../dispatch/scripts/settings.sh 2>&1 || true`
+!`${CLAUDE_PLUGIN_ROOT}/scripts/settings.sh 2>&1 || true`
 
 Raw saved values (blank means not set) and the current branch:
 !`bd config get custom.dispatch.integration 2>&1 || true`
@@ -36,13 +36,13 @@ Interactive session: ask with one AskUserQuestion, but only about settings that 
 
 ## 2. Project checks
 
-Run `${CLAUDE_SKILL_DIR}/scripts/checks.sh`. From its `candidate` lines, propose the fast checks as pre-merge hooks: type check, lint, unit tests. Don't propose slow end-to-end, deploy or release steps, even if `checks.sh` finds their commands (e.g. from `ci` lines). Skip a check whose name already appears in an `existing pre-merge` line.
+Run `${CLAUDE_PLUGIN_ROOT}/scripts/checks.sh`. From its `candidate` lines, propose the fast checks as pre-merge hooks: type check, lint, unit tests. Don't propose slow end-to-end, deploy or release steps, even if `checks.sh` finds their commands (e.g. from `ci` lines). Skip a check whose name already appears in an `existing pre-merge` line.
 
 Ask with AskUserQuestion (multiSelect) which of the proposed checks to add as pre-merge hooks. If AskUserQuestion isn't available (headless session), skip this step: add none.
 
 ## 3. Run
 
-Run `${CLAUDE_SKILL_DIR}/scripts/init.sh` with only the options settled in step 1 — a setting nobody chose to change gets no flag — plus `--parallel` and `--design-dir` from `$ARGUMENTS` when given, plus `--pre-merge NAME=COMMAND` for each check chosen in step 2, and show its output.
+Run `${CLAUDE_PLUGIN_ROOT}/scripts/init.sh` with only the options settled in step 1 — a setting nobody chose to change gets no flag — plus `--parallel` and `--design-dir` from `$ARGUMENTS` when given, plus `--pre-merge NAME=COMMAND` for each check chosen in step 2, and show its output.
 
 ## 4. Commit
 

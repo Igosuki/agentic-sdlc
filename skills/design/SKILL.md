@@ -4,7 +4,7 @@ description: Turn a product or feature request into a design document that remov
 argument-hint: "<what to build>"
 model: opus
 effort: high
-allowed-tools: Bash(${CLAUDE_SKILL_DIR}/../dispatch/scripts/settings.sh *), Bash(bd *)
+allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/settings.sh *), Bash(bd *)
 ---
 
 # Design
@@ -66,7 +66,7 @@ List the open points whose answer would change a contract, a goal or the scope. 
 
 **Where to write:**
 1. the location the request asks for; otherwise
-2. the configured design directory, unless this is blank: !`${CLAUDE_SKILL_DIR}/../dispatch/scripts/settings.sh design_dir 2>&1 || true`; otherwise
+2. the configured design directory, unless this is blank: !`${CLAUDE_PLUGIN_ROOT}/scripts/settings.sh design_dir 2>&1 || true`; otherwise
 3. the repository's existing design-doc convention; otherwise
 4. `docs/design/<slug>.md`.
 

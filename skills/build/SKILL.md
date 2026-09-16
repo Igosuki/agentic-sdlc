@@ -2,7 +2,7 @@
 name: build
 description: "Take a request from idea to integrated code: design and task split in plan mode for the user's approval, then write the design, create the beads tasks, commit and dispatch workers. Use when the user asks to build, add or change something end to end with sdlc, or when this project routes new work here (workflow: build). For a single phase, use sdlc:design, sdlc:split-plan or sdlc:dispatch."
 argument-hint: "<what to build>"
-allowed-tools: Bash(${CLAUDE_SKILL_DIR}/../dispatch/scripts/settings.sh *), Bash(git branch --show-current), Bash(git add -- *.md), Bash(git commit -m *)
+allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/settings.sh *), Bash(git branch --show-current), Bash(git add -- *.md), Bash(git commit -m *)
 ---
 
 # Build
@@ -10,7 +10,7 @@ allowed-tools: Bash(${CLAUDE_SKILL_DIR}/../dispatch/scripts/settings.sh *), Bash
 Request: $ARGUMENTS
 
 Settings:
-!`${CLAUDE_SKILL_DIR}/../dispatch/scripts/settings.sh 2>&1 || true`
+!`${CLAUDE_PLUGIN_ROOT}/scripts/settings.sh 2>&1 || true`
 
 Current branch:
 !`git branch --show-current 2>&1 || true`

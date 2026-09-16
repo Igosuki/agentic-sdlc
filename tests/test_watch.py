@@ -10,7 +10,7 @@ TESTS_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, TESTS_DIR)
 from test_tasks import BdRepoTestCase, run  # noqa: E402
 
-SCRIPTS_DIR = os.path.join(TESTS_DIR, "..", "skills", "dispatch", "scripts")
+SCRIPTS_DIR = os.path.join(TESTS_DIR, "..", "scripts")
 WATCH_PY = os.path.join(SCRIPTS_DIR, "watch.py")
 
 sys.path.insert(0, os.path.abspath(SCRIPTS_DIR))

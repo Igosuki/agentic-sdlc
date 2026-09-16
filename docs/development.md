@@ -5,6 +5,7 @@
 ```text
 .claude-plugin/        plugin.json, marketplace.json
 hooks/                 hooks.json and the worker hooks
+scripts/               every executable: worker lifecycle, task creation, project checks
 skills/
   setup/               machine check and recommended companions
   init/                project preparation
@@ -13,7 +14,7 @@ skills/
   split-plan/          task graphs
   split-task/          splitting one bead
   create-task/         one task; scripts/create-task.sh is used by all three planning skills
-  dispatch/            supervisor; scripts/ holds the worker lifecycle
+  dispatch/            supervisor over the worker lifecycle in scripts/
   status/ stats/ logs/ read-only views
 tests/wild/            end-to-end runs in a sandbox
 docs/                  this documentation
@@ -21,10 +22,10 @@ docs/                  this documentation
 
 ## Conventions
 
-- **One skill at a time, scripts only when a skill needs them.** Scripts live in `skills/<skill>/scripts/`.
-- **Bash + `jq`** for a script that runs commands and reads a few fields from JSON. **Python 3.9+, standard library only,** for a script that walks the task graph, sorts, totals, keeps state across rounds or renders logs. Shared task-graph logic lives in `skills/dispatch/scripts/tasks.py`, reached the way `status` and `logs` already call dispatch's scripts. Bead data is never passed as a command-line argument: Linux caps a single argument at 128 KiB, so scripts read `bd`'s JSON through a pipe instead.
+- **One skill at a time, scripts only when a skill needs them.** Scripts live in `scripts/` at the plugin root; commands, skills, hooks and workers call them as `${CLAUDE_PLUGIN_ROOT}/scripts/<name>`.
+- **Bash + `jq`** for a script that runs commands and reads a few fields from JSON. **Python 3.9+, standard library only,** for a script that walks the task graph, sorts, totals, keeps state across rounds or renders logs. Shared task-graph logic lives in `scripts/tasks.py`, reached the way `status` and `logs` already call dispatch's scripts. Bead data is never passed as a command-line argument: Linux caps a single argument at 128 KiB, so scripts read `bd`'s JSON through a pipe instead.
 - **Scripts explain themselves:** `--help` prints the usage, and invalid input lists every problem, prints the usage and exits 2. Skills don't document the scripts they call.
-- **Skills call scripts** through `${CLAUDE_SKILL_DIR}` or `${CLAUDE_PLUGIN_ROOT}`, pre-approved in `allowed-tools`, so the script's source never enters the context.
+- **Skills call scripts** through `${CLAUDE_PLUGIN_ROOT}`, pre-approved in `allowed-tools`, so the script's source never enters the context.
 - **Headless-aware skills:** ask with AskUserQuestion when it is available. Otherwise decide, and record the assumption. Never ask in plain text and stop.
 - **Planning skills use `model: opus`** and delegate every read to a cheap reading agent. The supervisor and workers run on Sonnet.
 - **Nothing named "sdlc"** in bead statuses or labels. Runtime keys are prefixed `dispatch_`.

@@ -9,7 +9,7 @@ deny() {
   exit 0
 }
 start='(^|[;&|(`[:space:]])'
-finish="${CLAUDE_PLUGIN_ROOT}/skills/dispatch/scripts/finish-task.sh $DISPATCH_TASK"
+finish="${CLAUDE_PLUGIN_ROOT}/scripts/finish-task.sh $DISPATCH_TASK"
 
 [[ ! "$cmd" =~ ${start}bd[[:space:]]+(close|done)([[:space:]]|$) ]] \
   || deny "Workers don't close issues with bd. Run $finish: it merges and closes the task, and the epic when it is done."

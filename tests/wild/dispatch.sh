@@ -6,7 +6,7 @@
 set -euo pipefail
 
 plugin_dir="$(cd "$(dirname "$(readlink -f "$0")")/../.." && pwd)"
-scripts="$plugin_dir/skills/dispatch/scripts"
+scripts="$plugin_dir/scripts"
 request="${1:-create an app that displays hello world in a web page}"
 mode="${SDLC_INTEGRATION:-epic-merge}"
 
@@ -17,7 +17,7 @@ cd "$repo"
 git init -q -b main
 printf '# Demo app\n\nA small demo web app.\n' > README.md
 git add README.md && git commit -q -m "Initial README"
-"$plugin_dir/skills/init/scripts/init.sh" --integration "$mode"
+"$plugin_dir/scripts/init.sh" --integration "$mode"
 echo "sandbox: $base"
 
 step() {
@@ -46,7 +46,7 @@ split_target=$(bd list --parent "$epic" --json 2>/dev/null | jq -r '[.[] | selec
 if [[ -n "$split_target" ]]; then
   splitting=$(cat /proc/sys/kernel/random/uuid)
   step 3-split-task "--session-id $splitting" "/sdlc:split-task $split_target"
-  "$plugin_dir/skills/create-task/scripts/create-task.sh" --parent "$epic" \
+  "$plugin_dir/scripts/create-task.sh" --parent "$epic" \
     --title "Wait for $split_target" \
     --description "Depends on $split_target closing once its own children close." \
     --acceptance "no-op, exercises dependency resolution" \

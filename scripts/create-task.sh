@@ -30,7 +30,7 @@ EOF
 }
 
 dir=$(dirname "$(readlink -f "$0")")
-tasks_py="$dir/../../dispatch/scripts/tasks.py"
+tasks_py="$dir/tasks.py"
 
 type=task title="" description="" parent="" acceptance="" scope="" verify=""
 complexity="" design="" priority=2 agent="" model="" effort="" review=""

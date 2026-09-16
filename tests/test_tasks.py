@@ -9,7 +9,7 @@ import tempfile
 import time
 import unittest
 
-SCRIPTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "skills", "dispatch", "scripts")
+SCRIPTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "scripts")
 sys.path.insert(0, SCRIPTS_DIR)
 import tasks  # noqa: E402
 
