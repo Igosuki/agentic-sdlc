@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # Headless run of the whole flow on a new project: design, split, add a
-# split task another task waits on, then dispatch until the epic is idle.
+# split task another task waits on, then dispatch until the epic is closed.
 # /sdlc:dispatch only confirms and starts the supervisor, and there's no one
-# here to confirm with, so this drives the sdlc:supervisor agent directly,
-# with --under and --parallel 2. The supervisor ends its run as soon as a
-# task needs a person, same as /sdlc:dispatch would restart it, so this
-# calls it again until nothing is running and nothing is ready.
+# here to confirm with, so this runs the supervisor script directly, with
+# --under and --parallel 2, in the foreground: no Claude session is needed
+# for supervision. supervise.py exits as soon as a person is needed or new
+# work appears, same as /sdlc:dispatch would restart it, so this calls it
+# again in a loop until the epic closes or a person would be needed.
 set -euo pipefail
 
 plugin_dir="$(cd "$(dirname "$(readlink -f "$0")")/../.." && pwd)"
@@ -60,14 +61,66 @@ else
   echo "no task under $epic to split, skipping"
 fi
 
+# supervise.py never exits just because work finished (see plan-supervisor.md,
+# "When it exits"): it only stops for a person or for new-work outside --under.
+# Run it in the background and poll separately for the two reasons this test
+# stops it itself: the epic closed, or nothing is running and nothing is ready.
+dispatch_log="$logs/4-dispatch.log"
 attempt=0
 while :; do
   attempt=$((attempt + 1))
-  step "4-dispatch-$attempt" "--agent sdlc:supervisor" "$epic --parallel 2"
-  running=$("$scripts/workers.py" --under "$epic" --alive-count)
-  ready=$("$scripts/next-tasks.py" --under "$epic" --ids)
-  [[ "$running" == 0 && -z "$ready" ]] && break
-  (( attempt < 20 )) || { echo "dispatch: gave up after $attempt supervisor runs"; break; }
+  attempt_out="$logs/4-dispatch-$attempt.out"
+  echo "[$(date +%T)] 4-dispatch-$attempt: $epic --parallel 2" | tee -a "$dispatch_log"
+  "$scripts/supervise.py" --under "$epic" --parallel 2 > "$attempt_out" 2>&1 &
+  pid=$!
+
+  idle_polls=0
+  stop_reason=""
+  while kill -0 "$pid" 2>/dev/null; do
+    sleep 15
+    kill -0 "$pid" 2>/dev/null || break
+
+    epic_status=$(bd show "$epic" --json 2>/dev/null | jq -r '.[0].status // empty')
+    if [[ "$epic_status" == closed ]]; then
+      stop_reason="epic closed"
+      break
+    fi
+
+    running=$("$scripts/workers.py" --under "$epic" --alive-count)
+    ready=$("$scripts/next-tasks.py" --under "$epic" --ids)
+    if [[ "$running" == 0 && -z "$ready" ]]; then
+      idle_polls=$((idle_polls + 1))
+    else
+      idle_polls=0
+    fi
+    (( idle_polls < 2 )) || stop_reason="nothing running and nothing ready: a person would be needed"
+    [[ -n "$stop_reason" ]] && break
+  done
+
+  if [[ -n "$stop_reason" ]]; then
+    kill -TERM "$pid" 2>/dev/null || true
+    wait "$pid" 2>/dev/null || true
+    echo "$stop_reason, stopping" | tee -a "$dispatch_log"
+    break
+  fi
+
+  set +e
+  wait "$pid"
+  status=$?
+  set -e
+  cat "$attempt_out" | tee -a "$dispatch_log"
+
+  if [[ "$status" -ne 0 ]]; then
+    echo "supervise.py exited $status, stopping" | tee -a "$dispatch_log"
+    break
+  fi
+
+  if grep -qx "taken over" "$attempt_out"; then
+    echo "taken over by another supervisor, stopping" | tee -a "$dispatch_log"
+    break
+  fi
+
+  (( attempt < 20 )) || { echo "dispatch: gave up after $attempt supervisor runs" | tee -a "$dispatch_log"; break; }
 done
 
 {
@@ -76,6 +129,6 @@ done
   echo; echo "Workers not closed:"; "$scripts/workers.py" --under "$epic"
   echo; echo "main:"; git log --oneline main
   echo; echo "Worker stats:"; "$scripts/stats.py" --under "$epic"
-  echo; echo "Planning and supervisor sessions: \$$(for f in "$logs"/*.jsonl; do jq -s 'map(select(.type == "result")) | last | .total_cost_usd // 0' "$f"; done | jq -s add)"
+  echo; echo "Planning sessions: \$$(for f in "$logs"/*.jsonl; do jq -s 'map(select(.type == "result")) | last | .total_cost_usd // 0' "$f"; done | jq -s add)"
 } | tee -a "$logs/summary.md"
 echo "summary: $logs/summary.md"
