@@ -34,13 +34,13 @@ Interactive session: ask with one AskUserQuestion about each setting `$ARGUMENTS
 
 ## 2. Project checks
 
-Run `print-merge-checks`. From its `candidate` lines, propose the fast checks as pre-merge hooks: type check, lint, unit tests. Don't propose slow end-to-end, deploy or release steps, even if `checks.sh` finds their commands (e.g. from `ci` lines). Skip a check whose name already appears in an `existing pre-merge` line.
+Run `${CLAUDE_SKILL_DIR}/scripts/print-merge-checks.sh`. From its `candidate` lines, propose the fast checks as pre-merge hooks: type check, lint, unit tests. Don't propose slow end-to-end, deploy or release steps, even if `print-merge-checks.sh` finds their commands (e.g. from `ci` lines). Skip a check whose name already appears in an `existing pre-merge` line.
 
 Ask with AskUserQuestion (multiSelect) which of the proposed checks to add as pre-merge hooks. If AskUserQuestion isn't available (headless session), skip this step: add none.
 
 ## 3. Run
 
-Run `${CLAUDE_PLUGIN_ROOT}/scripts/init.sh` with only the options settled in step 1 — a setting nobody chose to change gets no flag — plus `--parallel` from `$ARGUMENTS` when given, plus `--pre-merge NAME=COMMAND` for each check chosen in step 2, and show its output.
+Run `${CLAUDE_SKILL_DIR}/scripts/init.sh` with only the options settled in step 1 — a setting nobody chose to change gets no flag — plus `--parallel` from `$ARGUMENTS` when given, plus `--pre-merge NAME=COMMAND` for each check chosen in step 2, and show its output.
 
 ## 4. Commit
 

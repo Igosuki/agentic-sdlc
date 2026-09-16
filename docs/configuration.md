@@ -61,7 +61,7 @@ typecheck = "npm run typecheck"
 test = "npm test"
 ```
 
-`/sdlc:init` proposes these from `scripts/checks.sh`, which scans the repository (`package.json`, Makefile, justfile, `pyproject.toml`, `Cargo.toml`, `go.mod`) and lists the commands already configured. Adding one by hand: `init.sh --pre-merge lint="npm run lint"` (repeatable; an existing key is kept, not overwritten).
+`/sdlc:init` proposes these from `skills/init/scripts/print-merge-checks.sh`, which scans the repository (`package.json`, Makefile, justfile, `pyproject.toml`, `Cargo.toml`, `go.mod`) and lists the commands already configured. Adding one by hand: `init.sh --pre-merge lint="npm run lint"` (repeatable; an existing key is kept, not overwritten).
 
 The first time a machine runs one of these commands, `wt` asks for approval; non-interactively (a worker) it fails instead, and `finish-task.sh` reports that a person is needed. A person approves once, in the main checkout:
 
