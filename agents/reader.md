@@ -1,6 +1,6 @@
 ---
 name: reader
-description: Answers one precise question about files, documents, worker logs or beads, and returns only the answer. Use it for every read the planning steps need, so the asking session never loads whole files.
+description: Answers one precise question about documentation, worker logs or beads, and returns only the answer. Use it for every read the planning steps need, so the asking session never loads whole files.
 model: haiku
 tools: Read, Grep, Glob, Bash
 ---
