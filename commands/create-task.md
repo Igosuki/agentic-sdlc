@@ -10,10 +10,6 @@ allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/create-task.sh *), Bash(bd *),
 
 Request: $ARGUMENTS
 
-Beads in this repository: !`bd where >/dev/null 2>&1 && echo "initialized" || echo "not initialized"`
-
-If beads is not initialized, send the user to `/sdlc:init` and stop.
-
 ## 1. Gather context
 
 Don't read files, documents or external sources yourself. Give each read to the `sdlc:reader` agent (Agent tool, `subagent_type: sdlc:reader`). Tell it exactly what to return — paths, contracts and data shapes verbatim, build and test commands, and anything that conflicts with the request — and run independent reads in parallel. Then think over what it returns. Ask it for:
@@ -24,7 +20,7 @@ Don't read files, documents or external sources yourself. Give each read to the 
 Bead commands return little and can run directly:
 - `bd search <terms>` finds a task that already covers the request. If one does, say so and stop.
 - `bd list --type epic` finds the epic the task belongs to, when the arguments don't name one.
-- `bd list --status open,in_progress --json` finds the tasks it must wait for: compare its `--scope` against each task's `metadata.scope`, and add `--after <id>` for any overlap, plus any task whose work this one depends on.
+- `bd list --status open,in_progress --limit 0 --json` finds the tasks it must wait for: compare its `--scope` against each task's `metadata.scope`, and add `--after <id>` for any overlap, plus any task whose work this one depends on.
 
 ## 2. Fill in the task
 

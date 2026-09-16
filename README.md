@@ -92,8 +92,8 @@ The whole workflow in one command:
 /sdlc:build add a page that lists the latest orders
 ```
 
-1. `build` enters plan mode, writes the design and the task graph into the plan, and asks for your approval.
-2. It then writes the design document, creates the tasks, commits both, and dispatches.
+1. `build` enters plan mode, writes the design into the plan, and asks for your approval.
+2. It then writes and commits the design document, splits it into tasks and asks you to approve them, and dispatches.
 
 Step by step:
 
@@ -111,7 +111,7 @@ After a restart, or to pick up work in progress, run `/sdlc:dispatch` again.
 |---|---|
 | `/sdlc:setup` | Checks this machine for the tools sdlc needs, and recommends companions (rtk, reviewer and specialist agents) |
 | `/sdlc:init` | Prepares a project: beads, integration mode, target branch, `.claude/sdlc.local.md`, `.gitignore` |
-| `/sdlc:build <request>` | Runs design and split in plan mode for your approval, then creates and dispatches the tasks |
+| `/sdlc:build <request>` | Runs design in plan mode for your approval, then splits it into tasks for your approval, and dispatches them |
 | `/sdlc:design <request>` | Finds prior art, clears up ambiguity, and writes a design document |
 | `/sdlc:split [docs] [prompt \| bead-id]` | Splits a design, a plan-mode plan or a prompt into a beads task graph, or an existing bead into child tasks |
 | `/sdlc:create-task <request>` | Creates a single task that dispatch can run |

@@ -38,7 +38,7 @@ Reading is delegated to the `sdlc:reader` agent. The planning skills run on Opus
 
 Once the graph exists, `bd swarm validate` checks it for cycles and parts that aren't connected. `/sdlc:split <id>` splits an existing bead the same way. `/sdlc:create-task` creates a single task.
 
-In plan mode, split writes the graph into the plan instead, and creates it once the plan is approved.
+Split always creates beads, then shows the graph for approval. It doesn't run in plan mode.
 
 ## 3. Dispatch
 
