@@ -96,6 +96,17 @@ Hooks keep the worker on this path (see [configuration](configuration.md#hooks))
 
 Setting `execution_agent_type` on a task doesn't change which agent the worker session itself runs as (always `sdlc:worker`, or `sdlc:integrator`); it names the agent the worker hands implementation to, and appears in its prompt.
 
+## Verify
+
+`scripts/verify.sh <task|parent|epic>` runs the checks that finishing it would run:
+- **task:** its own verify command, in its worktree.
+- **parent task:** every non-closed descendant task's verify command, each in its own worktree, at any depth.
+- **epic:** every closed task's verify command — direct children of the epic bead — on the epic branch (`epic-merge`, `epic-pr`) or the target (`direct`), then the project's pre-merge checks (`wt hook pre-merge`).
+
+`finish-task.sh` calls it for its own verify step, so `/sdlc:verify` (`skills/verify/SKILL.md`) runs the same checks on demand, before a task is done, while reviewing, or after a fix. On a failure, it reads the check's output and the commits since the failing task merged, and says which change broke which check.
+
+Direct mode never re-runs an earlier task's verify command once a later task lands, so an epic can close with an earlier check broken. When `finish-task.sh` closes an epic in direct mode, it runs `verify.sh <epic>` on the target and comments any failure on the epic instead of blocking: the code has already merged.
+
 ## Integration modes
 
 | Mode | Tasks branch from and merge into | When an epic's tasks are done |

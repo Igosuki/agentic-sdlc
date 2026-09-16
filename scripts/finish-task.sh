@@ -18,8 +18,8 @@ queue of the task's base branch:
        human   a human gate blocks the task until a person reviews the diff
                and resolves it; the worker stops and is resumed afterwards
   3. rebases the branch onto the base
-  4. runs the verify command (for an integration task, the verify command of
-     every task in the epic)
+  4. runs verify.sh (the verify command of every task in the epic, plus the
+     project's pre-merge checks, for an integration task)
   5. fast-forwards the base to the branch
 Then closes the task, closes each parent task whose children are now all
 closed, and closes the epic when it is done: after its last task in direct
@@ -28,6 +28,9 @@ the integration task runs the project's pre-merge checks and pushes the epic
 branch and opens a pull request instead of step 5, and gates this task on the
 pull request (gh:pr); close-prs.sh closes the task and the epic once the pull
 request is merged.
+Closing an epic in direct mode then runs verify.sh on the target and comments
+any failure on the epic, since direct mode never re-runs an earlier task's
+verify command once a later one lands.
 
 The merge itself runs the project's pre-merge checks (wt merge / wt hook
 pre-merge, from .config/wt.toml). An unapproved check needs a person to run
@@ -81,13 +84,6 @@ while [[ -n "$parent" ]]; do
   parent=$(get "$bead" .parent)
 done
 mode=$( [[ -n "$epic_bead" ]] && get "$epic_bead" .metadata.dispatch_integration || true)
-
-if [[ "$role" == integration ]]; then
-  verifies=$(bd list --parent "$epic" --all --limit 0 --json |
-    jq -c --arg id "$id" '[.[] | select(.id != $id and (.metadata.verify // "") != "") | {id, verify: .metadata.verify}]')
-else
-  verifies=$(jq -cn --arg id "$id" --arg v "$(get "$task" .metadata.verify)" '[{id: $id, verify: $v}]')
-fi
 
 [[ "$(git -C "$wt_path" rev-list --count "$base..$branch")" -gt 0 ]] || problem "nothing committed on $branch since $base"
 dirty=$(git -C "$wt_path" status --porcelain --untracked-files=no | cut -c4- | paste -sd' ' -)
@@ -209,12 +205,11 @@ if ! git -C "$wt_path" rebase "$base" >/dev/null 2>&1; then
   problem "rebasing $branch onto $base conflicts in: $conflicts. Run git rebase $base, resolve the conflicts, then run this again."
 fi
 
-for ((i = 0; i < $(jq length <<<"$verifies"); i++)); do
-  check_id=$(jq -r ".[$i].id" <<<"$verifies")
-  check=$(jq -r ".[$i].verify" <<<"$verifies")
-  out=$(cd "$wt_path" && timeout 600 bash -c "$check" 2>&1) \
-    || problem "verify for $check_id failed after rebasing onto $base: $(tail -5 <<<"$out")"
-done
+# --no-pre-merge: for an integration task, the epic-pr block below or the final wt merge
+# already runs the project's pre-merge checks (with its own needs_approval handling); running
+# them here too would run a project's whole test suite twice.
+verify_out=$("$dir/verify.sh" --no-pre-merge "$review_target" 2>&1) \
+  || problem "verify for $review_target failed after rebasing onto $base: $(tail -5 <<<"$verify_out")"
 
 if [[ "$role" == integration && "$mode" == epic-pr ]]; then
   if ! hook_out=$(wt hook pre-merge -C "$wt_path" 2>&1); then
@@ -270,8 +265,16 @@ done <<<"$parents"
 if [[ -n "$epic" && "$(show "$epic" | jq -r .status)" != closed ]]; then
   integration=$(show "$epic" | jq -r '.metadata.dispatch_integration_task // empty')
   open=$(bd list --parent "$epic" --all --limit 0 --json | jq '[.[] | select(.issue_type != "event" and .status != "closed")] | length')
-  if [[ "$role" == integration || ( -z "$integration" && "$open" -eq 0 ) ]]; then
+  if [[ "$role" == integration ]]; then
     bd close "$epic" --reason "all tasks merged into $base" >/dev/null
     echo "closed epic $epic"
+  elif [[ -z "$integration" && "$open" -eq 0 ]]; then
+    bd close "$epic" --reason "all tasks merged into $base" >/dev/null
+    echo "closed epic $epic"
+    # Direct mode never re-ran an earlier task's verify command once later tasks landed, so
+    # a later change can leave it broken; this reports that instead of blocking the merge.
+    if ! verify_out=$("$dir/verify.sh" "$epic" 2>&1); then
+      bd comments add "$epic" "verify failed after closing: $(tail -5 <<<"$verify_out")" >/dev/null
+    fi
   fi
 fi

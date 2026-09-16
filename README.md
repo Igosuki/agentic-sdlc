@@ -118,6 +118,7 @@ After a restart, or to pick up work in progress, run `/sdlc:dispatch` again.
 | `/sdlc:dispatch [id...]` | Supervises the work: starts workers in work order, resumes crashed ones, and reports the moment a task needs a person |
 | `/sdlc:stop [task \| epic]` | Stops a task's worker, every worker under an epic, or every running worker |
 | `/sdlc:recover <task> [instructions]` | Resumes, finishes after a fix by hand, starts over, or splits a stopped, failed or crashed task |
+| `/sdlc:verify <task \| parent \| epic>` | Runs the checks that finishing it would run, on demand, and explains a failure |
 | `/sdlc:status` | Shows where workers run, crashed or stopped tasks, and the ready queue |
 | `/sdlc:stats [epic]` | Shows cost, duration, models and agents per task and per epic |
 | `/sdlc:logs <id>` | Shows what a task's workers did |
