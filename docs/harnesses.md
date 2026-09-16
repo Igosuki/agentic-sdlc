@@ -8,8 +8,8 @@ The facts about other harnesses below come from their documentation and source c
 
 | Seam | Where | What it relies on |
 |---|---|---|
-| Start a worker | `run-task.sh` | `claude -p --session-id <uuid> --permission-mode auto --output-format stream-json --verbose --forward-subagent-text [--agent \| --model] [--effort] --plugin-dir` |
-| Resume a worker | `resume-task.sh` | `claude -p --resume <uuid>` in the same worktree |
+| Start a worker | `run-task.sh` calls `start-worker.sh` | `claude -p --session-id <uuid> --agent sdlc:worker\|sdlc:integrator --permission-mode auto --output-format stream-json --verbose --forward-subagent-text [--model] [--effort] --plugin-dir` |
+| Resume a worker | `resume-task.sh` calls `start-worker.sh --resume` | `claude -p --resume <uuid>` in the same worktree |
 | Know it is alive | `workers.py`, `watch.py`, `finish-task.sh` | `pgrep` on the session id in the command line |
 | Read the outcome | `record-task.sh`, `logs.py` | stream-json lines: `result` (`total_cost_usd`, `num_turns`, `is_error`, `modelUsage`), `assistant` and `user` messages, `Agent` tool calls |
 | Keep the worker on track | `hooks/` | SessionStart `additionalContext`, PreToolUse `permissionDecision: deny`, Stop `decision: block` |

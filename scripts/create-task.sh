@@ -19,8 +19,8 @@ Options:
   --design PATH          design or source doc the bead comes from
   --after ID             this bead waits for ID (repeatable)
   --priority N           0-4, default 2
-  --agent NAME           execution_agent_type: the worker runs as this agent
-  --model MODEL          execution_suggested_model: the worker's model when no agent is set
+  --agent NAME           execution_agent_type: the worker hands the implementation to this agent
+  --model MODEL          execution_suggested_model: the worker session's model
   --effort LEVEL         execution_reasoning_effort: low|medium|high|xhigh|max
   --review LEVEL         none|agent|human: review before merging (default: bd config
                          custom.dispatch.review, else none)

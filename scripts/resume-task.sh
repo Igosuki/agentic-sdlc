@@ -76,24 +76,4 @@ if [[ ${#errors[@]} -gt 0 ]]; then
 fi
 
 prompt=${prompt:-"Your session was interrupted before you finished. Check the state of the worktree, then continue task $id from where you stopped. If finish-task.sh says a person is needed, record it with bd comments add $id \"<what's needed>\" and stop."}
-plugin_root=$(cd "$dir/.." && pwd)
-worker=(env "DISPATCH_TASK=$id" claude -p --resume "$session" --permission-mode auto --output-format stream-json --verbose --forward-subagent-text
-  --allowedTools "Bash($dir/finish-task.sh *)")
-# Installed as a plugin, workers load it so its hooks apply; installed as plain skills, there are no hooks.
-[[ ! -f "$plugin_root/.claude-plugin/plugin.json" ]] || worker+=(--plugin-dir "$plugin_root")
-agent=$(get .metadata.execution_agent_type)
-model=$(get .metadata.execution_suggested_model)
-effort=$(get .metadata.execution_reasoning_effort)
-if [[ -n "$agent" ]]; then worker+=(--agent "$agent"); else worker+=(--model "${model:-sonnet}"); fi
-[[ -z "$effort" ]] || worker+=(--effort "$effort")
-
-# setsid: the worker must outlive whoever resumed it.
-setsid -f bash -c '
-  wt_path=$1 root=$2 log=$3 record=$4 id=$5
-  shift 5
-  printf "\n{\"type\":\"dispatch_run\",\"started\":\"%s\"}\n" "$(date -Is)" >>"$log"
-  (cd "$wt_path" && "$@") </dev/null >>"$log" 2>>"$log.err"
-  cd "$root" && "$record" "$id" >>"$log.record" 2>&1
-' resume-task "$wt_path" "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")" "$log" "$dir/record-task.sh" "$id" \
-  "${worker[@]}" "$prompt" </dev/null >/dev/null 2>&1
-echo "resumed $id $wt_path $log"
+exec "$dir/start-worker.sh" "$id" --resume --prompt "$prompt"

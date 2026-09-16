@@ -7,8 +7,8 @@ flowchart TD
   A[Request] --> B[design: prior art, questions, design document]
   B --> C[split: task graph in beads]
   C --> D[dispatch: supervisor]
-  D -->|work order, parallel limit| E[run-task.sh: claim, worktree, worker session]
-  E --> F[worker: implement, commit, review]
+  D -->|work order, parallel limit| E[run-task.sh: claim, worktree, start-worker.sh]
+  E --> F[sdlc:worker agent: implement, commit, review]
   F --> G[finish-task.sh: rebase, verify, merge, close]
   G -->|problem| F
   G --> H[record-task.sh: cost, model, agents, event bead]
@@ -59,10 +59,10 @@ A task is dispatchable when it is ready in beads, has no children, and has a ver
 
 ## The worker
 
-A worker is one headless Claude Code session, running in one task's worktree, that owns that task until it is closed.
+A worker is one headless Claude Code session, running as the `sdlc:worker` agent in one task's worktree, that owns that task until it is closed. Its system prompt (`agents/worker.md`) carries the whole lifecycle below, so it survives a compaction or a resume.
 
-1. **Start:** `run-task.sh` claims the task. In the same update it records the session id, base branch, branch, host and start time. It then creates the worktree with `wt switch --create`, and starts `claude -p` detached with `setsid`, so the worker outlives whoever dispatched it.
-2. **Implement:** the worker implements the task, or hands it to an installed agent, as your configuration decides. It commits, and reviews the change when it judges that worthwhile.
+1. **Start:** `run-task.sh` claims the task. In the same update it records the session id, base branch, branch, host and start time. It then creates the worktree with `wt switch --create`, and calls `start-worker.sh`, which builds the `claude -p --agent sdlc:worker` command and starts it detached with `setsid`, so the worker outlives whoever dispatched it.
+2. **Implement:** the worker implements the task itself, or hands it to the agent named by the task's `execution_agent_type` metadata (or to whatever the user's CLAUDE.md asks for). It commits, and reviews the change when it judges that worthwhile.
 3. **Finish:** the worker runs `finish-task.sh`, which:
    - checks that work is committed and no tracked file is left modified
    - reviews the change, per the task's review level (below)
@@ -86,12 +86,11 @@ Each task has a review level, `--review none|agent|human` on `create-task.sh`, d
 
 A task is re-reviewed only when its diff changes: `finish-task.sh` compares a stable patch id (`git patch-id`) against the one last approved, so re-running it after a no-op doesn't ask for another round.
 
-Hooks keep the worker on this path (see [configuration](configuration.md#hooks)):
-- **SessionStart** restates the lifecycle after a resume or a compaction.
+Hooks keep the worker on this path (see [configuration](configuration.md#hooks)); the `sdlc:worker`/`sdlc:integrator` agent's own system prompt, not a hook, carries the lifecycle across a resume or a compaction:
 - **PreToolUse** denies `bd close`, `wt merge` and `git push` outside `finish-task.sh`, and denies `bd gate resolve`/`bd gate close` and setting `review` or `dispatch_review*` metadata. Only a person, or `finish-task.sh` itself, moves a review forward.
 - **Stop** blocks the first attempt to end while the task is open and the worker hasn't commented.
 
-Setting `execution_agent_type` on a task makes the worker session run as that agent. That agent's frontmatter then picks the model.
+Setting `execution_agent_type` on a task doesn't change which agent the worker session itself runs as (always `sdlc:worker`, or `sdlc:integrator`); it names the agent the worker hands implementation to, and appears in its prompt.
 
 ## Integration modes
 
@@ -101,7 +100,7 @@ Setting `execution_agent_type` on a task makes the worker session run as that ag
 | `epic-merge` | the epic branch `<epic-id>` | an integration task merges the epic branch into the target |
 | `epic-pr` | the epic branch | an integration task pushes it and opens a pull request |
 
-The **integration task** is created on an epic's first dispatch. It waits for every other task of the epic. It is a worker like any other, and its prompt is only to merge, which may mean editing code when the target moved or the tasks don't fit together. Its `finish-task.sh` runs the verify command of every task in the epic.
+The **integration task** is created on an epic's first dispatch. It waits for every other task of the epic. Its worker session runs as the `sdlc:integrator` agent (`agents/integrator.md`), not `sdlc:worker`: its job is only to merge, which may mean editing code when the target moved or the tasks don't fit together, never to add features. Its `finish-task.sh` runs the verify command of every task in the epic.
 
 In `epic-pr` mode, the integration task gates itself on the pull request with a `gh:pr` gate. `watch.py` runs `bd gate check`, and `close-prs.sh` closes the task and the epic once the pull request is merged.
 
@@ -126,7 +125,7 @@ The first time a command runs on a machine, `wt` needs a person to approve it: `
 A worker's state lives in beads, its worktree and its logs, so nothing is lost when a process or the machine dies:
 - **A crashed worker** is claimed (`in_progress` with a `dispatch_session`), but no process runs its session and no attempt outcome is recorded (`dispatch_state` is empty, or `running` on a bead claimed before `dispatch_state` existed).
 - **Diagnosis:** `workers.py` prints the evidence to decide on resuming: worktree, commits, uncommitted files, whether the Claude transcript exists, the last events, stderr, and the boot time.
-- **Resuming:** `resume-task.sh` starts `claude -p --resume <session>` in the same worktree, so the worker continues its own conversation.
+- **Resuming:** `resume-task.sh` calls `start-worker.sh --resume`, which starts `claude -p --resume <session>` in the same worktree, so the worker continues its own conversation.
 - **After a reboot:** run `/sdlc:dispatch`. It resumes crashed workers when the cause is gone, and reports those it shouldn't retry, such as a usage limit or a failure that repeats.
 
 ## Observing

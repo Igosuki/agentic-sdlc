@@ -22,9 +22,12 @@ bd config custom.dispatch.target, else main.
   epic-pr     like epic-merge, but the integration task pushes the epic branch and
               opens a pull request; the epic closes once the PR is merged (a gh:pr gate)
 
-Worker options come from the task's metadata: execution_agent_type (--agent),
-execution_suggested_model (--model, default sonnet, ignored with an agent),
-execution_reasoning_effort (--effort).
+The worker runs as the sdlc:worker agent (sdlc:integrator for an integration task),
+which owns the task's lifecycle: implement, commit, review, finish-task.sh. Worker
+options come from the task's metadata: execution_suggested_model (--model, no
+default: the agent's frontmatter decides), execution_reasoning_effort (--effort).
+execution_agent_type, when set, doesn't pick the CLI agent; it names the agent
+(Agent tool) the worker hands implementation to, and is mentioned in its prompt.
 
 Sets on the task: dispatch_session, dispatch_host, dispatch_base, dispatch_branch,
 dispatch_started. The worker runs with DISPATCH_TASK=<task> and this plugin loaded, so
@@ -137,33 +140,12 @@ fi
 wt_path=$(wt list --format json </dev/null 2>/dev/null | jq -r --arg b "$branch" '.items[] | select(.branch == $b) | .worktree.path // empty')
 [[ -n "$wt_path" && -d "$wt_path" ]] || fail "no worktree for branch $branch"
 
-finish="$dir/finish-task.sh"
-if [[ "$role" == integration && "$mode" == epic-pr ]]; then
-  prompt="Open a pull request for epic $epic ($(get "$epic_bead" .title)) into $target.
-
-Every other task of the epic is closed and merged into branch $epic, which is checked out in this worktree (bd children $epic lists them). The branch may need code changes first: $target may have moved, or the tasks may not work together.
-
-You own this until it is closed:
-1. Run: $finish $id
-   It rebases $epic onto $target, runs the verify command of every task in the epic, pushes $epic, opens the pull request, and closes this task. The epic closes once the pull request is merged.
-2. If it reports a problem (a conflict, a failing verify), fix the code, commit, and run it again.
-3. If it says a person is needed, record it with: bd comments add $id \"<what's needed>\", then stop.
-4. If you can't finish, record what's missing with: bd comments add $id \"<what's missing>\", then stop.
-Don't push, merge or close anything by other means."
-elif [[ "$role" == integration ]]; then
-  prompt="Merge epic $epic ($(get "$epic_bead" .title)) into $target.
-
-Every other task of the epic is closed and merged into branch $epic, which is checked out in this worktree (bd children $epic lists them). Merging may require editing the code: $target may have moved, or the tasks may not work together.
-
-You own this merge until it is closed:
-1. Run: $finish $id
-   It rebases $epic onto $target, runs the verify command of every task in the epic, merges into $target, and closes this task and the epic.
-2. If it reports a problem (a conflict, a failing verify), fix the code, commit, and run it again.
-3. If it says a person is needed, record it with: bd comments add $id \"<what's needed>\", then stop.
-4. If you can't finish, record what's missing with: bd comments add $id \"<what's missing>\", then stop.
-Don't merge or close anything by other means."
+if [[ "$role" == integration ]]; then
+  prompt="Epic $epic: $(get "$epic_bead" .title)
+Target: $target
+Branch: $branch"
 else
-  prompt="Implement task $id: $(get "$task" .title)
+  prompt="Task $id: $(get "$task" .title)
 
 $(get "$task" .description)
 
@@ -180,37 +162,12 @@ Design: $(get "$task" .metadata.design)"
   [[ -z "$epic" ]] || prompt+="
 Epic: $epic (bd show $epic; bd children $epic lists the sibling tasks)"
   prompt+="
-
-The task is already split: implement it here, don't decompose or dispatch it further.
-This is your own git worktree, on branch $branch, created from $base. You own this task until it is closed:
-1. Implement it and commit. Only committed work is merged.
-2. Review the change when you judge it worthwhile, for example with a reviewer agent, and address what matters.
-3. Run: $finish $id
-   It rebases onto $base, runs the verify command, merges into $base and closes the task. If it reports a problem (a failing verify, a conflict with a sibling's change on $base), fix it, commit, and run it again. git log $base and bd show <task> explain what sibling tasks changed.
-4. If it says a person is needed, record it with: bd comments add $id \"<what's needed>\", then stop.
-5. If you can't finish, record what's missing with: bd comments add $id \"<what's missing>\", then stop.
-Don't merge or close the task by other means."
+Base: $base
+Branch: $branch"
+  agent=$(get "$task" .metadata.execution_agent_type)
+  [[ -z "$agent" ]] || prompt+="
+Hand the implementation to the $agent agent (Agent tool, subagent_type: $agent)."
 fi
 
-plugin_root=$(cd "$dir/.." && pwd)
-worker=(env "DISPATCH_TASK=$id" claude -p --session-id "$session" --permission-mode auto --output-format stream-json --verbose --forward-subagent-text
-  --allowedTools "Bash($finish *)")
-# Installed as a plugin, workers load it so its hooks apply; installed as plain skills, there are no hooks.
-[[ ! -f "$plugin_root/.claude-plugin/plugin.json" ]] || worker+=(--plugin-dir "$plugin_root")
-agent=$(get "$task" .metadata.execution_agent_type)
-model=$(get "$task" .metadata.execution_suggested_model)
-effort=$(get "$task" .metadata.execution_reasoning_effort)
-if [[ -n "$agent" ]]; then worker+=(--agent "$agent"); else worker+=(--model "${model:-sonnet}"); fi
-[[ -z "$effort" ]] || worker+=(--effort "$effort")
-
-# setsid: the worker must outlive whoever dispatched it.
-setsid -f bash -c '
-  wt_path=$1 root=$2 log=$3 record=$4 id=$5
-  shift 5
-  printf "\n{\"type\":\"dispatch_run\",\"started\":\"%s\"}\n" "$(date -Is)" >>"$log"
-  (cd "$wt_path" && "$@") </dev/null >>"$log" 2>>"$log.err"
-  cd "$root" && "$record" "$id" >>"$log.record" 2>&1
-' run-task "$wt_path" "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")" "$log" "$dir/record-task.sh" "$id" \
-  "${worker[@]}" "$prompt" </dev/null >/dev/null 2>&1
+"$dir/start-worker.sh" "$id" --prompt "$prompt" || fail "could not start the worker"
 started=true
-echo "started $id $wt_path $log"

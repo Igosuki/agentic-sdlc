@@ -19,12 +19,12 @@
 
 ## Execution hints
 
-The keys documented in [beads' metadata page](https://beads.gascity.com/core-concepts/metadata), read by `run-task.sh`:
+The keys documented in [beads' metadata page](https://beads.gascity.com/core-concepts/metadata), read by `run-task.sh` and `start-worker.sh`:
 
 | Key | Effect on the worker |
 |---|---|
-| `execution_agent_type` | `claude --agent <name>`; the agent's frontmatter picks the model |
-| `execution_suggested_model` | `--model`, when no agent is set (default `sonnet`) |
+| `execution_agent_type` | the agent the worker hands the implementation to; that agent's frontmatter picks its model |
+| `execution_suggested_model` | `--model` for the worker session, overriding the worker agent's own model |
 | `execution_reasoning_effort` | `--effort` |
 
 ## Dispatch state
