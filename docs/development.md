@@ -4,6 +4,7 @@
 
 ```text
 .claude-plugin/        plugin.json, marketplace.json
+agents/                 reader.md, a read-only agent that answers one question and returns only the answer
 commands/              entry points: setup, init, build, dispatch, create-task, status, stats, logs
 hooks/                 hooks.json and the worker hooks
 scripts/               every executable: worker lifecycle, task creation, project checks
@@ -21,7 +22,7 @@ docs/                  this documentation
 - **Scripts explain themselves:** `--help` prints the usage, and invalid input lists every problem, prints the usage and exits 2. Skills don't document the scripts they call.
 - **Skills call scripts** through `${CLAUDE_PLUGIN_ROOT}`, pre-approved in `allowed-tools`, so the script's source never enters the context.
 - **Headless-aware skills:** ask with AskUserQuestion when it is available. Otherwise decide, and record the assumption. Never ask in plain text and stop.
-- **Planning skills use `model: opus`** and delegate every read to a cheap reading agent. The supervisor and workers run on Sonnet.
+- **Planning skills use `model: opus`** and delegate every read to the `sdlc:reader` agent. The supervisor and workers run on Sonnet.
 - **Nothing named "sdlc"** in bead statuses or labels. Runtime keys are prefixed `dispatch_`.
 
 ## Tests

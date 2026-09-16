@@ -25,7 +25,7 @@ flowchart TD
 - **Questions:** it asks only where the answer changes a contract, a goal or the scope. In a headless session it records assumptions instead.
 - **Output:** a document. Where it's written, in order: the location the request names, then `design_dir`, then the repository's existing convention, then `docs/design/<slug>.md`. It contains a prior-art section, open questions and assumptions, and whichever of goals, definition of done, glossary, contracts and decisions the request needs.
 
-Reading is delegated to a cheap reading agent. The planning skills run on Opus and only think about what comes back.
+Reading is delegated to the `sdlc:reader` agent. The planning skills run on Opus and only think about what comes back.
 
 ## 2. Split
 

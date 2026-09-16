@@ -21,10 +21,7 @@ Beads in this repository: !`bd where >/dev/null 2>&1 && echo "initialized" || ec
 
 ## Reading
 
-Don't read files, documents or external sources yourself. Delegate every read to a subagent, then think over what it returns.
-- Pick a reading agent from the available agent types: prefer one made for reading or summarizing large content (for example `bulk-reader`); otherwise use `Explore` with `model: haiku`.
-- Tell it exactly what to return: paths, contracts and data shapes verbatim, build and test commands, and anything that conflicts with the request.
-- Run independent reads in parallel.
+Don't read files, documents or external sources yourself. Give each read to the `sdlc:reader` agent (Agent tool, `subagent_type: sdlc:reader`). Tell it exactly what to return — paths, contracts and data shapes verbatim, build and test commands, and anything that conflicts with the request — and run independent reads in parallel. Then think over what it returns.
 
 The one exception is `references/task-rules.md` (used in Decompose below): read it yourself. A reader's summary would reword its rules.
 

@@ -109,7 +109,7 @@ After a restart, or to pick up work in progress, run `/sdlc:dispatch` again.
 
 | Skill | What it does |
 |---|---|
-| `/sdlc:setup` | Checks this machine for the tools sdlc needs, and recommends companions (rtk, a reading agent, reviewer and specialist agents) |
+| `/sdlc:setup` | Checks this machine for the tools sdlc needs, and recommends companions (rtk, reviewer and specialist agents) |
 | `/sdlc:init` | Prepares a project: beads, integration mode, target branch, `.claude/sdlc.local.md`, `.gitignore` |
 | `/sdlc:build <request>` | Runs design and split in plan mode for your approval, then creates and dispatches the tasks |
 | `/sdlc:design <request>` | Finds prior art, clears up ambiguity, and writes a design document |

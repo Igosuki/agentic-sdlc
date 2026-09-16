@@ -1,6 +1,6 @@
 ---
 name: setup
-description: Check this machine for what sdlc needs (Claude Code, beads, worktrunk, git, jq, python3 and a few system tools), offer to install what is missing, and recommend companions that make the workflow better or cheaper, such as rtk, a reading agent, a reviewer agent and specialist agents. Use once per machine after installing the plugin, or when a dispatch script reports a missing tool.
+description: Check this machine for what sdlc needs (Claude Code, beads, worktrunk, git, jq, python3 and a few system tools), offer to install what is missing, and recommend companions that make the workflow better or cheaper, such as rtk, a reviewer agent and specialist agents. Use once per machine after installing the plugin, or when a dispatch script reports a missing tool.
 disable-model-invocation: true
 model: sonnet
 allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/check.sh)
@@ -17,7 +17,7 @@ If the `os` line isn't Linux, say so first: the dispatch scripts don't support i
 
 ## 2. Required tools
 
-For each `missing` or `old` tool, give the installation instructions from its own documentation. Read the page with a reading agent if you need the exact commands:
+For each `missing` or `old` tool, give the installation instructions from its own documentation. If you need the exact commands, have the `sdlc:reader` agent (Agent tool, `subagent_type: sdlc:reader`) read the page:
 - beads (`bd`): <https://beads.gascity.com/getting-started/installation>
 - worktrunk (`wt`): <https://github.com/max-sixty/worktrunk>
 - Claude Code: <https://code.claude.com>
@@ -29,11 +29,10 @@ Install only what the user agrees to through AskUserQuestion, one tool at a time
 
 For each companion that isn't installed, say in one line why it helps:
 - rtk: compresses command output, so every session and worker spends fewer tokens — <https://github.com/rtk-ai/rtk> (not `reachingforthejack/rtk`, a different project with the same command name)
-- reading agent: hands large file reads and search results to a cheaper agent instead of filling the main context
 - reviewer agent: reviews a worker's change before it merges
 - specialist agents: workers hand implementation to a matching agent when your CLAUDE.md asks them to
 
-An agent type available in this session counts as installed, even under another name: for example, another reading agent can replace `bulk-reader`. Don't install companions without the user's OK.
+Don't install companions without the user's OK.
 
 ## 4. Next
 

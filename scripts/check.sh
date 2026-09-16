@@ -40,8 +40,6 @@ command -v gh >/dev/null && echo "optional gh $(version_of gh --version) (epic-p
 
 agent_file() { [[ -f "$HOME/.claude/agents/$1.md" || -f ".claude/agents/$1.md" ]]; }
 rtk gain >/dev/null 2>&1 && echo "recommended rtk installed" || echo "recommended rtk not installed: compresses command output, so every session and worker spends fewer tokens"
-{ agent_file bulk-reader || [[ -d "$HOME/.claude/skills/bulk-read" ]]; } && echo "recommended reading-agent installed (bulk-reader)" \
-  || echo "recommended reading-agent not found: the planning skills hand file reading to a cheap reading agent, and fall back to Explore on Haiku"
 agent_file reviewer && echo "recommended reviewer-agent installed" \
   || echo "recommended reviewer-agent not found: workers can review their change before merging"
 count=$(ls "$HOME/.claude/agents"/*.md .claude/agents/*.md 2>/dev/null | wc -l)

@@ -17,10 +17,9 @@ Be precise only where two people implementing different parts could otherwise bu
 
 ## Reading
 
-Run `bd` commands yourself. For everything else — files, documents and external sources — don't read them yourself: delegate the read to a subagent, then think over what it returns. If a `bd` result is large (a long `bd list` or a `bd show` with a long description or many comments), delegate reading that result too, instead of loading it into your own context.
-- Pick a reading agent from the available agent types: prefer one made for reading or summarizing large content (for example `bulk-reader`); otherwise use `Explore` with `model: haiku`.
-- Tell it exactly what to return: paths, contracts and data shapes verbatim, build and test commands, and anything that conflicts with the request.
-- Run independent reads in parallel.
+Run `bd` commands yourself; delegate reading a large `bd` result too (a long `bd list`, or a `bd show` with a long description or many comments), instead of loading it into your own context.
+
+Don't read files, documents or external sources yourself. Give each read to the `sdlc:reader` agent (Agent tool, `subagent_type: sdlc:reader`). Tell it exactly what to return — paths, contracts and data shapes verbatim, build and test commands, and anything that conflicts with the request — and run independent reads in parallel. Then think over what it returns.
 
 ## 1. Find prior art
 

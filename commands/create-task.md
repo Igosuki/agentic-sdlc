@@ -16,7 +16,7 @@ If beads is not initialized, send the user to `/sdlc:init` and stop.
 
 ## 1. Gather context
 
-Have a reading agent collect what the task needs, rather than reading files yourself: prefer one made for reading (for example `bulk-reader`), otherwise `Explore` with `model: haiku`. Ask it for:
+Don't read files, documents or external sources yourself. Give each read to the `sdlc:reader` agent (Agent tool, `subagent_type: sdlc:reader`). Tell it exactly what to return — paths, contracts and data shapes verbatim, build and test commands, and anything that conflicts with the request — and run independent reads in parallel. Then think over what it returns. Ask it for:
 - the files and interfaces the task touches
 - how the project is built and tested, so the verify command is real
 - the design document that covers the task, if there is one

@@ -28,7 +28,7 @@ Confirm with AskUserQuestion what is about to happen: the tasks that will start,
 
 ## 2. Handle crashed and stopped workers
 
-**Crashed** (the task is claimed — `in_progress` with `dispatch_session` set — no outcome is recorded, and no process runs its session): decide from the evidence `workers.py` prints: its last events usually say enough. Don't read worker logs yourself, since they are long and full of encoded thinking blocks. If you need more, run `${CLAUDE_PLUGIN_ROOT}/scripts/logs.py <task>`, or have a reading agent answer a precise question.
+**Crashed** (the task is claimed — `in_progress` with `dispatch_session` set — no outcome is recorded, and no process runs its session): decide from the evidence `workers.py` prints: its last events usually say enough. Don't read worker logs yourself, since they are long and full of encoded thinking blocks. If you need more, run `${CLAUDE_PLUGIN_ROOT}/scripts/logs.py <task>`, or have the `sdlc:reader` agent (Agent tool, `subagent_type: sdlc:reader`) answer a precise question.
 - **The log has a result:** the worker ended, but its attempt wasn't recorded. Run `${CLAUDE_PLUGIN_ROOT}/scripts/record-task.sh <task>`.
 - **Resume:** the transcript and worktree exist, and the cause is gone: a shutdown, a killed process, a transient error. A stop with no error is a reason to resume, even if it happened before. Run `${CLAUDE_PLUGIN_ROOT}/scripts/resume-task.sh <task> --prompt "<what stopped it, and continue task <task>>"`.
 - **Not yet:** the same cause would stop it again, such as a usage limit, an authentication failure or a full disk. Report the cause and what would fix it.
