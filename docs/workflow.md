@@ -128,6 +128,10 @@ A worker's state lives in beads, its worktree and its logs, so nothing is lost w
 - **Resuming:** `resume-task.sh` calls `start-worker.sh --resume`, which starts `claude -p --resume <session>` in the same worktree, so the worker continues its own conversation.
 - **After a reboot:** run `/sdlc:dispatch`. It resumes crashed workers when the cause is gone, and reports those it shouldn't retry, such as a usage limit or a failure that repeats.
 
+## Stopping workers
+
+Workers run detached, so nothing stops one on its own. `scripts/stop-task.sh <task|epic>` ends a task's worker process (TERM, then KILL if it doesn't exit), releases its branch's merge queue, and sets `dispatch_state` to `stopped` with a comment saying a person stopped it — set before the process is signalled and reasserted after, so the task reads `stopped` no matter when `start-worker.sh`'s own `record-task.sh` call lands. Given an epic, it stops every running worker under it, at any depth. `/sdlc:stop [task|epic]` shows what's about to stop, asks, then runs it; `/sdlc:recover` picks a stopped task back up.
+
 ## Observing
 
 - `/sdlc:status`: workers, the ready queue and settings

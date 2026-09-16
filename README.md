@@ -116,6 +116,7 @@ After a restart, or to pick up work in progress, run `/sdlc:dispatch` again.
 | `/sdlc:split [docs] [prompt \| bead-id]` | Splits a design, a plan-mode plan or a prompt into a beads task graph, or an existing bead into child tasks |
 | `/sdlc:create-task <request>` | Creates a single task that dispatch can run |
 | `/sdlc:dispatch [epic]` | Supervises the work: starts workers in work order, follows them, and resumes crashed ones |
+| `/sdlc:stop [task \| epic]` | Stops a task's worker, every worker under an epic, or every running worker |
 | `/sdlc:status` | Shows where workers run, crashed or stopped tasks, and the ready queue |
 | `/sdlc:stats [epic]` | Shows cost, duration, models and agents per task and per epic |
 | `/sdlc:logs <id>` | Shows what a task's workers did |
