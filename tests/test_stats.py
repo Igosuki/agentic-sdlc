@@ -64,7 +64,7 @@ class TestStats(BdRepoTestCase):
         self.assertIn("review $0.75", result.stdout)
         self.assertIn("total: 1 tasks, $1.00,", result.stdout)
 
-    def test_epic_as_plain_argument_and_as_flag_agree(self):
+    def test_id_as_plain_argument_and_as_flag_agree(self):
         epic = self.create("create", "--title", "Epic", "--type", "epic")
         task = self.create(
             "create", "--title", "Task", "--type", "task", "--parent", epic, "--metadata", '{"verify": "true"}'
@@ -72,13 +72,39 @@ class TestStats(BdRepoTestCase):
         self.record_event(task, "merged", "s1", 0.10, 5)
 
         by_position = self.stats(epic).stdout
-        by_flag = self.stats("--epic", epic).stdout
+        by_flag = self.stats("--under", epic).stdout
         self.assertEqual(by_position, by_flag)
         self.assertIn(task, by_position)
 
     def test_both_positional_and_flag_is_an_error(self):
-        result = self.stats("epic-a", "--epic", "epic-b", check=False)
+        result = self.stats("epic-a", "--under", "epic-b", check=False)
         self.assertEqual(result.returncode, 2)
+
+    def test_under_option_selects_leaf_parent_epic_and_multiple_ids(self):
+        epic = self.create("create", "--title", "Epic", "--type", "epic")
+        parent = self.create("create", "--title", "Parent", "--type", "task", "--parent", epic)
+        leaf = self.create(
+            "create", "--title", "Leaf", "--type", "task", "--parent", parent, "--metadata", '{"verify": "true"}'
+        )
+        self.record_event(leaf, "merged", "s1", 0.10, 5)
+
+        other_epic = self.create("create", "--title", "OtherEpic", "--type", "epic")
+        other_task = self.create(
+            "create", "--title", "OtherTask", "--type", "task", "--parent", other_epic,
+            "--metadata", '{"verify": "true"}',
+        )
+        self.record_event(other_task, "merged", "s2", 0.20, 5)
+
+        self.assertIn(leaf, self.stats("--under", leaf).stdout)  # a leaf task
+        self.assertIn(leaf, self.stats("--under", parent).stdout)  # a parent task
+
+        by_epic = self.stats("--under", epic).stdout  # an epic
+        self.assertIn(leaf, by_epic)
+        self.assertNotIn(other_task, by_epic)
+
+        by_two = self.stats("--under", epic, "--under", other_epic).stdout  # two ids
+        self.assertIn(leaf, by_two)
+        self.assertIn(other_task, by_two)
 
 
 if __name__ == "__main__":

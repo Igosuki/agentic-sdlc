@@ -22,7 +22,7 @@ DESCRIPTION = """Lists dispatched tasks that aren't closed, with where their wor
   pr-opened   a pull request is open, waiting for its merge
 
 Options:
-  --epic EPIC     only tasks under that epic, at any depth
+  --under ID      only tasks under that id, at any depth; repeatable
   --alive-count   print only the number of live workers on this machine
 
 Exit codes: 0 listed, 2 invalid arguments."""
@@ -253,7 +253,10 @@ def main(argv=None):
     parser = argparse.ArgumentParser(
         prog="workers.py", description=DESCRIPTION, formatter_class=argparse.RawDescriptionHelpFormatter
     )
-    parser.add_argument("--epic", default="", help="only tasks under that epic, at any depth")
+    parser.add_argument(
+        "--under", action="append", default=[], dest="under_ids", metavar="ID",
+        help="only tasks under that id, at any depth; repeatable",
+    )
     parser.add_argument(
         "--alive-count", action="store_true", dest="alive_count",
         help="print only the number of live workers on this machine",
@@ -265,8 +268,8 @@ def main(argv=None):
     dispatched = [
         t for t in all_tasks if t.get("status") == "in_progress" and (t.get("metadata") or {}).get("dispatch_session")
     ]
-    if args.epic:
-        dispatched = [t for t in dispatched if tasks.epic_of(by_id, t["id"]) == args.epic]
+    if args.under_ids:
+        dispatched = [t for t in dispatched if tasks.under(by_id, t["id"], args.under_ids)]
 
     if args.alive_count:
         print(sum(1 for t in dispatched if tasks.worker_running(t)))

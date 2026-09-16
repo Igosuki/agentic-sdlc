@@ -76,6 +76,20 @@ class TestEpicAndParentsToClose(BdRepoTestCase):
         result = self.tasks_py("epic", self.c1, stdin_json=self.all_tasks())
         self.assertEqual(result.stdout.strip(), self.epic)
 
+    def test_under_selects_leaf_parent_epic_and_multiple_ids(self):
+        by_id = tasks.index_by_id(self.all_tasks())
+        self.assertTrue(tasks.under(by_id, self.c1, [self.c1]))  # a leaf under itself
+        self.assertTrue(tasks.under(by_id, self.c1, [self.b]))  # a leaf under its parent
+        self.assertTrue(tasks.under(by_id, self.c1, [self.epic]))  # a leaf under its epic
+        self.assertFalse(tasks.under(by_id, self.c2, [self.c1]))  # not under an unrelated sibling
+        self.assertTrue(tasks.under(by_id, self.c2, [self.c1, self.b]))  # under one of several ids
+
+    def test_under_cli_reads_stdin(self):
+        result = self.tasks_py("under", self.c1, "--under", self.b, stdin_json=self.all_tasks())
+        self.assertEqual(result.stdout.strip(), "true")
+        result = self.tasks_py("under", self.c2, "--under", self.c1, stdin_json=self.all_tasks())
+        self.assertEqual(result.stdout.strip(), "false")
+
     def test_parents_to_close_walks_up_a_chain(self):
         self.bd("close", self.c1)
         self.bd("close", self.c2)
@@ -128,16 +142,29 @@ class TestDispatchOrder(BdRepoTestCase):
         self.assertIn(solo, ids)
         self.assertLess(ids.index(leaf), ids.index(solo))  # epic1 is started, epic2 isn't
 
-    def test_epic_filter(self):
+    def test_under_filter_selects_leaf_parent_epic_and_multiple_ids(self):
         epic1 = self.create("create", "--title", "Epic1", "--type", "epic")
+        parent = self.create("create", "--title", "Parent", "--type", "task", "--parent", epic1)
+        leaf = self.create(
+            "create", "--title", "Leaf", "--type", "task", "--parent", parent, "--metadata", '{"verify": "true"}'
+        )
         t1 = self.create(
             "create", "--title", "T1", "--type", "task", "--parent", epic1, "--metadata", '{"verify": "true"}'
         )
         epic2 = self.create("create", "--title", "Epic2", "--type", "epic")
-        self.create("create", "--title", "T2", "--type", "task", "--parent", epic2, "--metadata", '{"verify": "true"}')
+        t2 = self.create(
+            "create", "--title", "T2", "--type", "task", "--parent", epic2, "--metadata", '{"verify": "true"}'
+        )
 
-        order = tasks.dispatch_order(self.all_tasks(), self.ready_tasks(), only_epic=epic1)
-        self.assertEqual([e["task"]["id"] for e in order], [t1])
+        all_tasks, ready_tasks = self.all_tasks(), self.ready_tasks()
+
+        def ids(under_ids):
+            return [e["task"]["id"] for e in tasks.dispatch_order(all_tasks, ready_tasks, under_ids=under_ids)]
+
+        self.assertEqual(ids([leaf]), [leaf])  # a leaf task
+        self.assertEqual(sorted(ids([parent])), sorted([leaf]))  # a parent task
+        self.assertEqual(sorted(ids([epic1])), sorted([leaf, t1]))  # an epic
+        self.assertEqual(sorted(ids([epic1, t2])), sorted([leaf, t1, t2]))  # two ids
 
     def test_no_verify_command_is_not_dispatchable(self):
         self.create("create", "--title", "NoVerify", "--type", "task")

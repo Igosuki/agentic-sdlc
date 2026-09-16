@@ -30,14 +30,17 @@ def main(argv=None):
     parser = argparse.ArgumentParser(
         prog="next-tasks.py", description=DESCRIPTION, formatter_class=argparse.RawDescriptionHelpFormatter
     )
-    parser.add_argument("--epic", default="", help="only tasks of that epic")
+    parser.add_argument(
+        "--under", action="append", default=[], dest="under_ids", metavar="ID",
+        help="only tasks under that id, at any depth; repeatable",
+    )
     parser.add_argument("--ids", action="store_true", help="print only task ids, one per line")
     args = parser.parse_args(argv)
 
     all_tasks = bd_json("list", "--all", "--limit", "0")
     ready_tasks = bd_json("ready", "--limit", "0")
 
-    order = tasks.dispatch_order(all_tasks, ready_tasks, only_epic=args.epic or None)
+    order = tasks.dispatch_order(all_tasks, ready_tasks, under_ids=args.under_ids or None)
 
     if args.ids:
         for entry in order:

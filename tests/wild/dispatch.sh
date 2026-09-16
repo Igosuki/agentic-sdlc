@@ -4,7 +4,7 @@
 # /sdlc:dispatch only confirms and starts the supervisor, and there's no one
 # here to confirm with, so this drives the sdlc:supervisor agent directly.
 # It follows its own workers (Monitor + watch.py) until idle, so one call
-# with --epic and --parallel 2 replaces polling here.
+# with --under and --parallel 2 replaces polling here.
 set -euo pipefail
 
 plugin_dir="$(cd "$(dirname "$(readlink -f "$0")")/../.." && pwd)"
@@ -64,9 +64,9 @@ step 4-dispatch "--agent sdlc:supervisor" "$epic --parallel 2"
 {
   echo "## Result"
   echo; echo "Beads:"; bd list --all --pretty 2>/dev/null
-  echo; echo "Workers not closed:"; "$scripts/workers.py" --epic "$epic"
+  echo; echo "Workers not closed:"; "$scripts/workers.py" --under "$epic"
   echo; echo "main:"; git log --oneline main
-  echo; echo "Worker stats:"; "$scripts/stats.py" --epic "$epic"
+  echo; echo "Worker stats:"; "$scripts/stats.py" --under "$epic"
   echo; echo "Planning and supervisor sessions: \$$(for f in "$logs"/*.jsonl; do jq -s 'map(select(.type == "result")) | last | .total_cost_usd // 0' "$f"; done | jq -s add)"
 } | tee -a "$logs/summary.md"
 echo "summary: $logs/summary.md"

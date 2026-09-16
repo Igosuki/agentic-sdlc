@@ -157,14 +157,17 @@ def main(argv=None):
     parser = argparse.ArgumentParser(
         prog="stats.py", description=DESCRIPTION, formatter_class=argparse.RawDescriptionHelpFormatter
     )
-    parser.add_argument("epic_id", nargs="?", default=None, metavar="epic-id", help="only that epic")
-    parser.add_argument("--epic", dest="epic_opt", default=None, metavar="EPIC", help="only that epic")
+    parser.add_argument("id", nargs="?", default=None, help="only tasks under that id, at any depth")
+    parser.add_argument(
+        "--under", dest="under_ids", action="append", default=[], metavar="ID",
+        help="only tasks under that id, at any depth; repeatable",
+    )
     args = parser.parse_args(argv)
 
-    if args.epic_id is not None and args.epic_opt is not None:
-        print("error: give the epic once, as an argument or as --epic", file=sys.stderr)
+    if args.id is not None and args.under_ids:
+        print("error: give the id once, as an argument or as --under", file=sys.stderr)
         return 2
-    only = args.epic_opt or args.epic_id or ""
+    under_ids = args.under_ids or ([args.id] if args.id else [])
 
     all_tasks = bd_json("list", "--all", "--limit", "0")
     events = bd_json("list", "--type", "event", "--all", "--limit", "0")
@@ -172,8 +175,8 @@ def main(argv=None):
 
     entries = latest_per_session(dispatch_events(events))
     reports = task_reports(entries, by_id)
-    if only:
-        reports = [r for r in reports if r["epic"] == only]
+    if under_ids:
+        reports = [r for r in reports if tasks.under(by_id, r["task"], under_ids)]
 
     print(render(reports, by_id))
     return 0

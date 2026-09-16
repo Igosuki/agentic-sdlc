@@ -26,7 +26,7 @@ round also runs bd gate check, so gates that can resolve on their own do, then
 close-prs.sh and resume-reviewed.sh.
 
 Options:
-  --epic EPIC          only that epic's tasks, at any depth
+  --under ID           only tasks under that id, at any depth; repeatable
   --interval SECONDS   time between rounds, default 10
   --once               one round, then exit
 
@@ -53,11 +53,11 @@ def new_state():
     return {"ready": set(), "state": {}, "crash": set(), "closed": set()}
 
 
-def step(all_tasks, ready_tasks, epic, state, round_num):
+def step(all_tasks, ready_tasks, under_ids, state, round_num):
     """One round: classifies every dispatched task and epic, updates `state` in place,
     and returns (lines, idle). `round_num` is 0 on the first round."""
     by_id = tasks.index_by_id(all_tasks)
-    order = tasks.dispatch_order(all_tasks, ready_tasks, only_epic=epic or None)
+    order = tasks.dispatch_order(all_tasks, ready_tasks, under_ids=under_ids or None)
     ready_ids = [entry["task"]["id"] for entry in order]
 
     lines = []
@@ -70,7 +70,7 @@ def step(all_tasks, ready_tasks, epic, state, round_num):
     for task in all_tasks:
         tid = task["id"]
         if task.get("issue_type") == "epic":
-            if epic and tid != epic and task.get("parent") != epic:
+            if under_ids and not tasks.under(by_id, tid, under_ids):
                 continue
             if task.get("status") == "closed":
                 if tid not in state["closed"]:
@@ -83,7 +83,7 @@ def step(all_tasks, ready_tasks, epic, state, round_num):
         session = metadata.get("dispatch_session")
         if not session:
             continue
-        if epic and tasks.epic_of(by_id, tid) != epic:
+        if under_ids and not tasks.under(by_id, tid, under_ids):
             continue
 
         raw_state = metadata.get("dispatch_state") or ""
@@ -116,7 +116,10 @@ def main(argv=None):
     parser = argparse.ArgumentParser(
         prog="watch.py", description=DESCRIPTION, formatter_class=argparse.RawDescriptionHelpFormatter
     )
-    parser.add_argument("--epic", default="", help="only that epic's tasks, at any depth")
+    parser.add_argument(
+        "--under", action="append", default=[], dest="under_ids", metavar="ID",
+        help="only tasks under that id, at any depth; repeatable",
+    )
     parser.add_argument("--interval", default="10", help="time between rounds, default 10")
     parser.add_argument("--once", action="store_true", help="one round, then exit")
     args = parser.parse_args(argv)
@@ -133,7 +136,7 @@ def main(argv=None):
         run_round_hooks(script_dir)
         all_tasks = bd_json("list", "--all", "--limit", "0")
         ready_tasks = bd_json("ready", "--limit", "0")
-        lines, idle = step(all_tasks, ready_tasks, args.epic, state, round_num)
+        lines, idle = step(all_tasks, ready_tasks, args.under_ids, state, round_num)
         for line in lines:
             print(line, flush=True)
 

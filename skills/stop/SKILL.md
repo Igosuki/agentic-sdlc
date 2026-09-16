@@ -17,7 +17,7 @@ Workers:
 
 - **No arguments:** every worker listed above as `running`.
 - **A task id:** that task's own line above, if it says `running`.
-- **An epic id:** run `bd show <id> --json`. If `issue_type` is `epic`, run `${CLAUDE_PLUGIN_ROOT}/scripts/workers.py --epic <id>` and take its `running` lines.
+- **An epic id:** run `bd show <id> --json`. If `issue_type` is `epic`, run `${CLAUDE_PLUGIN_ROOT}/scripts/workers.py --under <id>` and take its `running` lines.
 
 If nothing found is running, say so and stop; there's nothing to do.
 

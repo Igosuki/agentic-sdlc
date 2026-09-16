@@ -41,16 +41,29 @@ class TestNextTasks(BdRepoTestCase):
         result = self.next_tasks("--ids")
         self.assertEqual(result.stdout.split(), [solo])
 
-    def test_epic_option_filters(self):
+    def test_under_option_selects_leaf_parent_epic_and_multiple_ids(self):
         epic1 = self.create("create", "--title", "Epic1", "--type", "epic")
+        parent = self.create("create", "--title", "Parent", "--type", "task", "--parent", epic1)
+        leaf = self.create(
+            "create", "--title", "Leaf", "--type", "task", "--parent", parent, "--metadata", '{"verify": "true"}'
+        )
         t1 = self.create(
             "create", "--title", "T1", "--type", "task", "--parent", epic1, "--metadata", '{"verify": "true"}'
         )
         epic2 = self.create("create", "--title", "Epic2", "--type", "epic")
-        self.create("create", "--title", "T2", "--type", "task", "--parent", epic2, "--metadata", '{"verify": "true"}')
+        t2 = self.create(
+            "create", "--title", "T2", "--type", "task", "--parent", epic2, "--metadata", '{"verify": "true"}'
+        )
 
-        result = self.next_tasks("--epic", epic1, "--ids")
-        self.assertEqual(result.stdout.split(), [t1])
+        self.assertEqual(self.next_tasks("--under", leaf, "--ids").stdout.split(), [leaf])
+        self.assertEqual(sorted(self.next_tasks("--under", parent, "--ids").stdout.split()), [leaf])
+        self.assertEqual(
+            sorted(self.next_tasks("--under", epic1, "--ids").stdout.split()), sorted([leaf, t1])
+        )
+        self.assertEqual(
+            sorted(self.next_tasks("--under", epic1, "--under", t2, "--ids").stdout.split()),
+            sorted([leaf, t1, t2]),
+        )
 
     def test_unknown_argument_exits_2(self):
         result = self.next_tasks("--bogus", check=False)

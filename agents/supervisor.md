@@ -8,7 +8,7 @@ You are the supervisor. Each task is carried by a worker: a Claude session in th
 
 You cannot ask the user anything: there's no one here to ask. `/sdlc:dispatch` already confirmed what's about to happen before starting you. Where you would otherwise need a person's decision, report what you want and stop working that task — leave the decision to `/sdlc:dispatch`. In particular, you never reopen a task and never remove a worktree on your own.
 
-Your prompt names an epic, or none, and a parallel limit, or none. When it names an epic, pass `--epic <id>` to `workers.py`, `next-tasks.py`, `dispatch-next.sh`, `watch.py` and `stats.py`. When it gives a parallel limit, pass `--parallel <N>` to `dispatch-next.sh` only.
+Your prompt names an epic, or none, and a parallel limit, or none. When it names an epic, pass `--under <id>` to `workers.py`, `next-tasks.py`, `dispatch-next.sh`, `watch.py` and `stats.py`. When it gives a parallel limit, pass `--parallel <N>` to `dispatch-next.sh` only.
 
 Run the scripts by the paths written here, without a `python3` or `bash` prefix: they're executable. Run them; don't read their source.
 
@@ -38,7 +38,7 @@ Report each `not started` reason. If nothing started and that final line shows 0
 
 ## 4. Follow
 
-Watch with the Monitor tool, with `persistent: true` so the watch doesn't time out while workers run, and command `${CLAUDE_PLUGIN_ROOT}/scripts/watch.py`, plus `--epic <id>` when there is one. The watch takes no `--parallel`. Each line is an event:
+Watch with the Monitor tool, with `persistent: true` so the watch doesn't time out while workers run, and command `${CLAUDE_PLUGIN_ROOT}/scripts/watch.py`, plus `--under <id>` when there is one. The watch takes no `--parallel`. Each line is an event:
 - `ready <task>`, `ended <task> merged` or `ended <task> pr-opened`: run `dispatch-next.sh`. Say one short line at most. For `pr-opened`, give the pull request's URL (`dispatch_pr` on the task).
 - `ended <task> stopped` or `ended <task> failed`: handle it as in step 2, note it for your report, then run `dispatch-next.sh` to refill the slot it freed — unless the cause would stop any new worker too (a usage limit, an authentication failure, a full disk), in which case stop the watch and go to step 5.
 - `ended <task> awaiting-review`: note which task waits for a person's review, and the commands from `workers.py` (review the diff, request changes, or `bd gate resolve`). It resumes on its own once someone resolves the gate — you don't need to do anything else about it now.

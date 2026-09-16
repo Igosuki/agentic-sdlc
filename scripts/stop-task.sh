@@ -7,7 +7,7 @@ Usage: stop-task.sh <task-id|epic-id>
 
 Ends running workers. Given a task, stops its own worker, if one is running.
 Given an epic, stops every running worker under it, at any depth (tasks.py
-epic, the same lookup workers.py uses for --epic).
+epic, the same lookup workers.py uses for --under).
 
 For each worker stopped:
   1. sets dispatch_state=stopped, before signalling the process, so a task

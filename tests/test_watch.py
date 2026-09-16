@@ -67,18 +67,18 @@ class TestWatchStep(BdRepoTestCase):
             args += ["--set-metadata", f"dispatch_{key}={value}"]
         self.bd(*args)
 
-    def round(self, epic, state, round_num):
-        return watch.step(self.all_tasks(), self.ready_tasks(), epic, state, round_num)
+    def round(self, under_ids, state, round_num):
+        return watch.step(self.all_tasks(), self.ready_tasks(), under_ids, state, round_num)
 
     def test_ready_task_reported_once(self):
         self.create("create", "--title", "Solo", "--type", "task", "--metadata", '{"verify": "true"}')
         state = watch.new_state()
 
-        lines, idle = self.round("", state, 0)
+        lines, idle = self.round([], state, 0)
         self.assertEqual(len([line for line in lines if line.startswith("ready ")]), 1)
         self.assertFalse(idle)
 
-        lines, idle = self.round("", state, 1)
+        lines, idle = self.round([], state, 1)
         self.assertEqual(lines, [])
 
     def test_crashed_task_reported_once_even_on_first_round(self):
@@ -86,11 +86,11 @@ class TestWatchStep(BdRepoTestCase):
         self.claim(task, "no-such-session")
         state = watch.new_state()
 
-        lines, idle = self.round("", state, 0)
+        lines, idle = self.round([], state, 0)
         self.assertIn(f"crashed {task}", lines)
         self.assertTrue(idle)  # crashed isn't "alive": nothing left for this round to wait on
 
-        lines, idle = self.round("", state, 1)
+        lines, idle = self.round([], state, 1)
         self.assertEqual(lines, [])
 
     def test_task_that_ends_between_rounds_is_reported_the_first_time_seen(self):
@@ -100,15 +100,15 @@ class TestWatchStep(BdRepoTestCase):
         state = watch.new_state()
 
         # round 0: task doesn't exist yet in the watched snapshot.
-        lines, _ = watch.step([], [], "", state, 0)
+        lines, _ = watch.step([], [], [], state, 0)
         self.assertEqual(lines, [])
 
         self.claim(task, "session-a", state="stopped")
-        lines, idle = self.round("", state, 1)
+        lines, idle = self.round([], state, 1)
         self.assertEqual(lines, [f"ended {task} stopped"])
         self.assertTrue(idle)
 
-        lines, idle = self.round("", state, 2)
+        lines, idle = self.round([], state, 2)
         self.assertEqual(lines, [])  # not reported twice
 
     def test_first_round_never_reports_ended(self):
@@ -117,7 +117,7 @@ class TestWatchStep(BdRepoTestCase):
         self.claim(task, "session-a", state="merged")
         state = watch.new_state()
 
-        lines, _ = self.round("", state, 0)
+        lines, _ = self.round([], state, 0)
         self.assertEqual(lines, [])
 
     def test_running_then_crashing_then_recorded_is_reported_as_ended(self):
@@ -126,21 +126,21 @@ class TestWatchStep(BdRepoTestCase):
         proc = self.spawn("run-task.sh", task)
         state = watch.new_state()
 
-        lines, idle = self.round("", state, 0)
+        lines, idle = self.round([], state, 0)
         self.assertEqual(lines, [])
         self.assertFalse(idle)
 
         proc.send_signal(signal.SIGKILL)
         proc.wait(timeout=5)
-        lines, idle = self.round("", state, 1)
+        lines, idle = self.round([], state, 1)
         self.assertIn(f"crashed {task}", lines)
 
         self.bd("update", task, "--set-metadata", "dispatch_state=failed")
-        lines, idle = self.round("", state, 2)
+        lines, idle = self.round([], state, 2)
         self.assertEqual(lines, [f"ended {task} failed"])
         self.assertTrue(idle)
 
-    def test_epic_filter_at_any_depth_counts_subtask_towards_alive(self):
+    def test_under_option_selects_leaf_parent_epic_and_multiple_ids(self):
         epic = self.create("create", "--title", "Epic", "--type", "epic")
         parent = self.create("create", "--title", "Parent", "--type", "task", "--parent", epic)
         leaf = self.create(
@@ -148,23 +148,27 @@ class TestWatchStep(BdRepoTestCase):
         )
         self.claim(leaf, "session-a")
         self.spawn("run-task.sh", leaf)
-        state = watch.new_state()
 
-        lines, idle = self.round(epic, state, 0)
-        self.assertFalse(idle)  # the subtask keeps the epic's watch alive
+        other_epic = self.create("create", "--title", "Other", "--type", "epic")
+
+        self.assertFalse(self.round([leaf], watch.new_state(), 0)[1])  # a leaf task keeps it alive
+        self.assertFalse(self.round([parent], watch.new_state(), 0)[1])  # a parent task
+        self.assertFalse(self.round([epic], watch.new_state(), 0)[1])  # an epic
+        self.assertTrue(self.round([other_epic], watch.new_state(), 0)[1])  # excluded: idle despite the worker
+        self.assertFalse(self.round([other_epic, epic], watch.new_state(), 0)[1])  # two ids, one matches
 
     def test_closed_epic_reported_once(self):
         epic = self.create("create", "--title", "Epic", "--type", "epic")
         state = watch.new_state()
 
-        lines, _ = self.round("", state, 0)
+        lines, _ = self.round([], state, 0)
         self.assertEqual(lines, [])
 
         self.bd("close", epic)
-        lines, _ = self.round("", state, 1)
+        lines, _ = self.round([], state, 1)
         self.assertEqual(lines, [f"closed {epic}"])
 
-        lines, _ = self.round("", state, 2)
+        lines, _ = self.round([], state, 2)
         self.assertEqual(lines, [])
 
 

@@ -103,7 +103,7 @@ class TestWorkers(BdRepoTestCase):
         result = self.workers()
         self.assertIn("pull request: https://example/pr/1, waiting for its merge", result.stdout)
 
-    def test_epic_filter_at_any_depth(self):
+    def test_under_option_selects_leaf_parent_epic_and_multiple_ids(self):
         epic = self.create("create", "--title", "Epic", "--type", "epic")
         parent = self.create("create", "--title", "Parent", "--type", "task", "--parent", epic)
         leaf = self.create(
@@ -118,10 +118,22 @@ class TestWorkers(BdRepoTestCase):
         )
         self.claim(other_task, "session-f", host="myhost", state="stopped")
 
-        result = self.workers("--epic", epic)
+        result = self.workers("--under", leaf)  # a leaf task
         self.assertIn(leaf, result.stdout)
         self.assertNotIn(other_task, result.stdout)
-        self.assertEqual(self.workers("--epic", epic, "--alive-count").stdout.strip(), "0")
+
+        result = self.workers("--under", parent)  # a parent task
+        self.assertIn(leaf, result.stdout)
+        self.assertNotIn(other_task, result.stdout)
+
+        result = self.workers("--under", epic)  # an epic
+        self.assertIn(leaf, result.stdout)
+        self.assertNotIn(other_task, result.stdout)
+        self.assertEqual(self.workers("--under", epic, "--alive-count").stdout.strip(), "0")
+
+        result = self.workers("--under", epic, "--under", other_epic)  # two ids
+        self.assertIn(leaf, result.stdout)
+        self.assertIn(other_task, result.stdout)
 
     def test_unknown_argument_exits_2(self):
         result = self.workers("--bogus", check=False)

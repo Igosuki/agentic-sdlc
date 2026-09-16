@@ -32,6 +32,21 @@ def epic_of(by_id, task_id):
     return None
 
 
+def under(by_id, task_id, root_ids):
+    """True when task_id is one of root_ids or a descendant of one, at any depth."""
+    root_ids = set(root_ids)
+    if task_id in root_ids:
+        return True
+    seen = set()
+    parent_id = (by_id.get(task_id) or {}).get("parent")
+    while parent_id and parent_id not in seen:
+        if parent_id in root_ids:
+            return True
+        seen.add(parent_id)
+        parent_id = (by_id.get(parent_id) or {}).get("parent")
+    return False
+
+
 def _children(by_id, parent_id):
     return [t for t in by_id.values() if t.get("parent") == parent_id and t.get("issue_type") != "event"]
 
@@ -60,7 +75,7 @@ def parents_to_close(by_id, task_id):
     return result
 
 
-def dispatch_order(all_tasks, ready_tasks, only_epic=None):
+def dispatch_order(all_tasks, ready_tasks, under_ids=None):
     """Epics already started first, then priority/age, then within an epic the tasks
     that unblock the most others."""
     by_id = index_by_id(all_tasks)
@@ -85,7 +100,7 @@ def dispatch_order(all_tasks, ready_tasks, only_epic=None):
         if task["id"] in parents:
             continue
         epic = epic_of(by_id, task["id"])
-        if only_epic and epic != only_epic:
+        if under_ids and not under(by_id, task["id"], under_ids):
             continue
         group = by_id.get(epic, task)
         started = epic_started(epic) if epic else False
@@ -171,6 +186,10 @@ def main(argv=None):
     p = sub.add_parser("worker", help="print true or false: whether <id>'s worker is running")
     p.add_argument("id")
 
+    p = sub.add_parser("under", help="print true or false: whether <id> is one of --under or a descendant of one, at any depth")
+    p.add_argument("id")
+    p.add_argument("--under", action="append", default=[], metavar="ID", help="a task id; repeatable")
+
     p = sub.add_parser("log-totals", help="print cost, turns and seconds (tab-separated) for a worker log")
     p.add_argument("log")
 
@@ -205,6 +224,9 @@ def main(argv=None):
             print(f"error: no task {args.id} in the piped data", file=sys.stderr)
             return 2
         print("true" if worker_running(task) else "false")
+        return 0
+    if args.command == "under":
+        print("true" if under(by_id, args.id, args.under) else "false")
         return 0
 
     return 2

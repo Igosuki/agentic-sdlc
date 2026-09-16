@@ -3,10 +3,12 @@ set -euo pipefail
 
 usage() {
   cat <<'EOF2'
-Usage: dispatch-next.sh [--epic EPIC] [--parallel N]
+Usage: dispatch-next.sh [--under ID ...] [--parallel N]
 
 Starts the next ready tasks in work order (next-tasks.py) with run-task.sh,
 until this machine runs N workers (default: settings.sh parallel).
+
+--under ID   only tasks under that id, at any depth (repeatable)
 
 Prints run-task.sh's lines, "not started <task>: <reason>" for a task that
 couldn't start, and a final line with the number of workers running.
@@ -14,13 +16,17 @@ Exit codes: 0 done (possibly nothing started), 2 invalid arguments.
 EOF2
 }
 
-epic="" parallel=""
+under=() parallel=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -h|--help) usage; exit 0 ;;
-    --epic|--parallel)
+    --under)
       [[ $# -ge 2 ]] || { echo "error: $1 needs a value" >&2; usage >&2; exit 2; }
-      [[ "$1" == --epic ]] && epic="$2" || parallel="$2"
+      under+=("$2")
+      shift ;;
+    --parallel)
+      [[ $# -ge 2 ]] || { echo "error: $1 needs a value" >&2; usage >&2; exit 2; }
+      parallel="$2"
       shift ;;
     *) echo "error: unknown argument $1" >&2; usage >&2; exit 2 ;;
   esac
@@ -32,7 +38,9 @@ parallel=${parallel:-$("$dir/settings.sh" parallel)}
 
 running=$("$dir/workers.py" --alive-count)
 filter=()
-[[ -z "$epic" ]] || filter=(--epic "$epic")
+for id in "${under[@]}"; do
+  filter+=(--under "$id")
+done
 for task in $("$dir/next-tasks.py" --ids "${filter[@]}"); do
   (( running < parallel )) || break
   if out=$("$dir/run-task.sh" "$task" 2>&1); then
