@@ -5,7 +5,7 @@ sdlc moves a request through three phases. Each phase is a skill, so you can run
 ```mermaid
 flowchart TD
   A[Request] --> B[design: prior art, questions, design document]
-  B --> C[split-plan: task graph in beads]
+  B --> C[split: task graph in beads]
   C --> D[dispatch: supervisor]
   D -->|work order, parallel limit| E[run-task.sh: claim, worktree, worker session]
   E --> F[worker: implement, commit, review]
@@ -29,16 +29,16 @@ Reading is delegated to a cheap reading agent. The planning skills run on Opus a
 
 ## 2. Split
 
-`/sdlc:split-plan [docs] [prompt]` turns a design document, a plan made in plan mode, or a plain prompt into a beads task graph. The agent decides its shape: one or several epics, tasks, subtasks. Each task gets:
+`/sdlc:split [docs] [prompt]` turns a design document, a plan made in plan mode, or a plain prompt into a beads task graph. The agent decides its shape: one or several epics, tasks, subtasks. Each task gets:
 - a description, and acceptance criteria
 - a **scope**: the path prefixes it changes. Tasks that don't wait for each other don't share paths.
 - a **verify command**: one short command that exits 0 when the acceptance is met. It must exercise the behaviour, so a syntax check alone doesn't count, and it may only rely on files that exist once the task's dependencies are done.
 - a **complexity** (small, medium, large)
 - **dependencies**: tasks wait for shared interfaces before using them
 
-Once the graph exists, `bd swarm validate` checks it for cycles and parts that aren't connected. `/sdlc:split-task <id>` splits an existing bead the same way. `/sdlc:create-task` creates a single task.
+Once the graph exists, `bd swarm validate` checks it for cycles and parts that aren't connected. `/sdlc:split <id>` splits an existing bead the same way. `/sdlc:create-task` creates a single task.
 
-In plan mode, split-plan writes the graph into the plan instead, and creates it once the plan is approved.
+In plan mode, split writes the graph into the plan instead, and creates it once the plan is approved.
 
 ## 3. Dispatch
 

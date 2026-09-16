@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Headless run of the whole flow on a new project: design, split-plan, add a
+# Headless run of the whole flow on a new project: design, split, add a
 # split task another task waits on, then dispatch until the epic is idle.
 # /sdlc:dispatch follows its own workers (Monitor + watch.py) until idle, so
 # one call with --epic and --parallel 2 replaces polling here.
@@ -32,20 +32,20 @@ step() {
 
 planning=$(cat /proc/sys/kernel/random/uuid)
 step 1-design "--session-id $planning" "/sdlc:design $request"
-step 2-split-plan "--resume $planning" "/sdlc:split-plan"
+step 2-split "--resume $planning" "/sdlc:split"
 
-bd where >/dev/null 2>&1 || { echo "no beads after split-plan, stopping"; exit 1; }
+bd where >/dev/null 2>&1 || { echo "no beads after split, stopping"; exit 1; }
 git add -A && git commit -q -m "Design and tasks" && echo "committed design and tasks"
 
 epic=$(bd list --type epic --no-parent --json 2>/dev/null | jq -r '.[0].id // empty')
-[[ -n "$epic" ]] || { echo "no epic after split-plan, stopping"; exit 1; }
+[[ -n "$epic" ]] || { echo "no epic after split, stopping"; exit 1; }
 
 # Split one of the plan's tasks further, and add a task that waits for it, to
 # exercise dependency resolution across a task split after the initial plan.
 split_target=$(bd list --parent "$epic" --json 2>/dev/null | jq -r '[.[] | select(.issue_type == "task")][0].id // empty')
 if [[ -n "$split_target" ]]; then
   splitting=$(cat /proc/sys/kernel/random/uuid)
-  step 3-split-task "--session-id $splitting" "/sdlc:split-task $split_target"
+  step 3-split "--session-id $splitting" "/sdlc:split $split_target"
   "$plugin_dir/scripts/create-task.sh" --parent "$epic" \
     --title "Wait for $split_target" \
     --description "Depends on $split_target closing once its own children close." \

@@ -3,7 +3,7 @@ name: create-task
 description: Create one beads task that sdlc:dispatch can run, with acceptance criteria, scope, a verify command that exercises the behaviour and complexity, and optionally its epic, the tasks it waits for, and an agent, model or effort hint. Use when the user wants to add a single task rather than split a plan.
 argument-hint: "<what the task should do> [--parent <epic>] [--after <id>]"
 model: sonnet
-allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/create-task.sh *), Bash(bd *), Read(/${CLAUDE_SKILL_DIR}/../split-plan/references/**), Read(/${CLAUDE_PLUGIN_ROOT}/skills/split-plan/references/**)
+allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/create-task.sh *), Bash(bd *), Read(/${CLAUDE_PLUGIN_ROOT}/skills/split/references/**)
 ---
 
 # Create task
@@ -28,11 +28,11 @@ Bead commands return little and can run directly:
 
 ## 2. Fill in the task
 
-Follow `${CLAUDE_SKILL_DIR}/../split-plan/references/task-rules.md` for sizing, scope, review level and task format. Read it if it isn't already in your context.
+Follow `${CLAUDE_PLUGIN_ROOT}/skills/split/references/task-rules.md` for sizing, scope, review level and task format. Read it if it isn't already in your context.
 - **Verify:** one short command that exits 0 when the acceptance is met. It must exercise the behaviour, so a syntax check alone doesn't count.
 - **Scope:** the path prefixes the task changes.
 - **Review:** choose `--review` with the same rules as `task-rules.md`: `agent` for medium and large tasks and tasks touching authentication, security, payments, data migrations or public APIs; `human` when a person must sign off; `none` for small documentation, configuration or test-only tasks.
-- **Large requests:** if `task-rules.md`'s size thresholds make this large, create nothing here. Hand off to `/sdlc:split-plan "<request>"` instead.
+- **Large requests:** if `task-rules.md`'s size thresholds make this large, create nothing here. Hand off to `/sdlc:split "<request>"` instead.
 
 Ask with AskUserQuestion only what you can't infer, such as which epic the task belongs to. If AskUserQuestion isn't available (headless session), choose the most reasonable option and write it under "Assumptions" in the description.
 

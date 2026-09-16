@@ -1,6 +1,6 @@
 ---
 name: design
-description: Turn a product or feature request into a design document that removes ambiguity and fixes contracts, grounded in prior art from the repository, existing beads and (with the user's permission) connected sources such as wikis, Notion or Drive. Output is ready for sdlc:split-plan. Use when starting new work from an idea, before any tasks exist.
+description: Turn a product or feature request into a design document that removes ambiguity and fixes contracts, grounded in prior art from the repository, existing beads and (with the user's permission) connected sources such as wikis, Notion or Drive. Output is ready for sdlc:split. Use when starting new work from an idea, before any tasks exist.
 argument-hint: "<what to build>"
 model: opus
 effort: high
@@ -11,7 +11,7 @@ allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/settings.sh *), Bash(bd *)
 
 Request: $ARGUMENTS
 
-Produce a design document for this request. The document's job is to remove ambiguity and fix the contracts that separate pieces of work must agree on. It is not an implementation plan: tasks, file-by-file steps and code belong to `sdlc:split-plan`.
+Produce a design document for this request. The document's job is to remove ambiguity and fix the contracts that separate pieces of work must agree on. It is not an implementation plan: tasks, file-by-file steps and code belong to `sdlc:split`.
 
 Be precise only where two people implementing different parts could otherwise build incompatible things, or where the goal itself is unclear.
 
@@ -109,7 +109,7 @@ Print:
 - a summary of at most three lines
 - the assumptions you made
 
-Then suggest `/sdlc:split-plan <document path>` as the next step.
+Then suggest `/sdlc:split <document path>` as the next step.
 
 Do not create beads, branches or commits.
 

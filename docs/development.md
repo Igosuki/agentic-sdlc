@@ -4,18 +4,12 @@
 
 ```text
 .claude-plugin/        plugin.json, marketplace.json
+commands/              entry points: setup, init, build, dispatch, create-task, status, stats, logs
 hooks/                 hooks.json and the worker hooks
 scripts/               every executable: worker lifecycle, task creation, project checks
 skills/
-  setup/               machine check and recommended companions
-  init/                project preparation
-  build/               design + split in plan mode, then dispatch
   design/              design documents
-  split-plan/          task graphs
-  split-task/          splitting one bead
-  create-task/         one task; scripts/create-task.sh is used by all three planning skills
-  dispatch/            supervisor over the worker lifecycle in scripts/
-  status/ stats/ logs/ read-only views
+  split/               task graphs, from a doc, a plan, a prompt or an existing bead
 tests/wild/            end-to-end runs in a sandbox
 docs/                  this documentation
 ```
@@ -35,7 +29,7 @@ docs/                  this documentation
 Every test runs in a sandbox outside this repository, `~/dev/sdlc-sandbox` by default (`SDLC_SANDBOX`). Workers run on Sonnet (`SDLC_MODEL`).
 
 ```bash
-tests/wild/run.sh          # design and split on a new repository, then split-task on a hand-made epic
+tests/wild/run.sh          # design and split on a new repository, then split on a hand-made epic
 tests/wild/dispatch.sh     # the whole flow on a new project, until no work is left
 SDLC_INTEGRATION=direct tests/wild/dispatch.sh "create a todo list web app"
 ```

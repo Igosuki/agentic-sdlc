@@ -2,6 +2,7 @@
 name: init
 description: Prepare the current project for sdlc. Initializes beads, sets the integration mode and target branch, creates .claude/sdlc.local.md, and ignores local files. Safe to run again. Use in a project before its first design or dispatch, or to change these settings.
 argument-hint: "[--integration direct|epic-merge|epic-pr] [--target BRANCH] [--parallel N] [--design-dir DIR] [--workflow build|none]"
+disable-model-invocation: true
 model: sonnet
 allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/init.sh *), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/checks.sh *), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/settings.sh *), Bash(bd config get custom.dispatch.integration *), Bash(bd config get custom.dispatch.target *), Bash(git branch --show-current *), Bash(git status --porcelain -- .gitignore .beads), Bash(git add -- .gitignore .beads), Bash(git commit -m "Ignore sdlc local files" -- .gitignore .beads)
 ---

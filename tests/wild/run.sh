@@ -13,7 +13,7 @@ cd "$repo"
 git init -q -b main
 printf '# Demo app\n\nA small demo web app.\n' > README.md
 git add README.md && git commit -q -m "Initial README"
-# split-plan points to /sdlc:init instead of initializing beads itself.
+# split points to /sdlc:init instead of initializing beads itself.
 $dry_run || "$plugin_dir/scripts/init.sh"
 echo "sandbox: $base"
 
@@ -48,13 +48,13 @@ session_c=$(cat /proc/sys/kernel/random/uuid)
 # Run once against the real permission system (no --dangerously-skip-permissions),
 # so a skill's allowed-tools gaps show up here instead of only in dispatch runs.
 step 1 design "--session-id $session_a" "/sdlc:design create an app that displays hello world in a web page" check
-step 2 split-plan "--resume $session_a" "/sdlc:split-plan" check
+step 2 split "--resume $session_a" "/sdlc:split" check
 step 3 design "--session-id $session_b" "/sdlc:design add a music player that automatically plays a nice piano tune on the web page"
-step 4 split-plan "--resume $session_b" "/sdlc:split-plan"
+step 4 split "--resume $session_b" "/sdlc:split"
 
 if $dry_run; then
   echo "step 5: bd create \"add a play queue of piano tunes for the music player\" -t epic --silent"
-  step 6 split-task "--session-id $session_c" "/sdlc:split-task <epic id>"
+  step 6 split "--session-id $session_c" "/sdlc:split <epic id>"
   step 7 status "" "/sdlc:status" check
   step 8 stats "" "/sdlc:stats <epic id>" check
   step 9 logs "" "/sdlc:logs <task id>" check
@@ -67,7 +67,7 @@ else
   epic=$(bd create "add a play queue of piano tunes for the music player" -t epic --silent)
   echo "step 5: created epic $epic"
   printf '## Step 5: bd create epic\n\n%s\n\n' "$epic" >> "$logs/summary.md"
-  step 6 split-task "--session-id $session_c" "/sdlc:split-task $epic"
+  step 6 split "--session-id $session_c" "/sdlc:split $epic"
 
   # Read-only skills, also run once with the real permission system.
   step 7 status "" "/sdlc:status" check

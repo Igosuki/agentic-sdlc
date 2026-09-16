@@ -1,6 +1,6 @@
 # Task rules
 
-Read by split-plan, split-task and create-task.
+Read by split and create-task.
 
 ## Graph shape
 

@@ -1,6 +1,6 @@
 ---
 name: dispatch
-description: Supervise the implementation of beads tasks. Dispatches ready tasks in work order, within the parallel limit, to worker sessions that each implement, merge and close one task in its own worktree; follows them as they end; resumes crashed workers and reports stopped ones. Takes an epic, or all dispatchable work when given none. Use when tasks from sdlc:split-plan or sdlc:split-task are ready to implement, or after a restart to pick up dispatched work.
+description: Supervise the implementation of beads tasks. Dispatches ready tasks in work order, within the parallel limit, to worker sessions that each implement, merge and close one task in its own worktree; follows them as they end; resumes crashed workers and reports stopped ones. Takes an epic, or all dispatchable work when given none. Use when tasks from sdlc:split are ready to implement, or after a restart to pick up dispatched work.
 argument-hint: "[epic-id] [--parallel N]"
 model: sonnet
 allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/settings.sh *), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/workers.py *), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/next-tasks.py *), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/logs.py *), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/resume-task.sh *), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/merge-queue.sh *), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/dispatch-next.sh *), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/watch.py *), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/stats.py *), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/record-task.sh *), Bash(bd *), Bash(wt remove *)
@@ -37,7 +37,7 @@ Confirm with AskUserQuestion what is about to happen: the tasks that will start,
 
 Keep track of every task you decide on here: step 4 skips a `crashed` event for a task already decided in this step.
 
-**Stopped or failed:** the worker ended without closing its task. Its comment says why. Report it with a next step: clarify the task, `/sdlc:split-task <task>`, or fix it by hand in its worktree. Don't dispatch it again yourself.
+**Stopped or failed:** the worker ended without closing its task. Its comment says why. Report it with a next step: clarify the task, `/sdlc:split <task>`, or fix it by hand in its worktree. Don't dispatch it again yourself.
 
 ## 3. Dispatch
 

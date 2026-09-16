@@ -4,7 +4,7 @@
 
 ## Task fields
 
-`create-task.sh` (used by split-plan, split-task and create-task) creates beads with:
+`create-task.sh` (used by split and create-task) creates beads with:
 
 | Field | Where | Meaning |
 |---|---|---|

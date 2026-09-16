@@ -1,6 +1,7 @@
 ---
 name: setup
 description: Check this machine for what sdlc needs (Claude Code, beads, worktrunk, git, jq, python3 and a few system tools), offer to install what is missing, and recommend companions that make the workflow better or cheaper, such as rtk, a reading agent, a reviewer agent and specialist agents. Use once per machine after installing the plugin, or when a dispatch script reports a missing tool.
+disable-model-invocation: true
 model: sonnet
 allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/check.sh)
 ---
