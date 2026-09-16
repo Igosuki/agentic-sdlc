@@ -114,6 +114,10 @@ bd gate create --type=human --blocks <integration-task> --reason "review the epi
 
 Every branch that tasks merge into has a queue, so merges into it happen one at a time, on every machine that shares the beads database. A queue is an ephemeral bead, which `bd ready` and `bd list` don't show. Holding it means having claimed that bead. `merge-queue.sh` creates, takes and releases queues.
 
+## Leftovers
+
+A crash between merge and record, or a task reset by hand, can leave a worktree, a branch, or a held merge queue behind. `/sdlc:clean` (`scripts/clean.sh [--apply]`) lists these, one line per item with its reason, and removes them once you approve. It never touches the main checkout, the worktree of a claimed task, or a task whose `dispatch_state` is `stopped`, `failed` or `awaiting-review`: those still need `/sdlc:recover` or a review.
+
 ## Project checks
 
 `wt merge` (and, in `epic-pr` mode, `wt hook pre-merge`) runs the project's own `[pre-merge]` commands from `.config/wt.toml` before the merge lands — type checks, linters, unit tests, whatever the project decides. `/sdlc:init` proposes these from `checks.sh`'s scan of the repository (`package.json` scripts, a Makefile or justfile, `pyproject.toml`, `Cargo.toml`, `go.mod`) and adds the ones the user picks.

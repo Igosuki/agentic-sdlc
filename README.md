@@ -120,6 +120,7 @@ After a restart, or to pick up work in progress, run `/sdlc:dispatch` again.
 | `/sdlc:status` | Shows where workers run, crashed or stopped tasks, and the ready queue |
 | `/sdlc:stats [epic]` | Shows cost, duration, models and agents per task and per epic |
 | `/sdlc:logs <id>` | Shows what a task's workers did |
+| `/sdlc:clean` | Lists leftover worktrees, branches and merge queues, and removes them once you approve |
 
 ## Configuration
 
