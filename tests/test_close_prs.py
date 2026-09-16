@@ -60,11 +60,11 @@ class BdRepoTestCase(unittest.TestCase):
     def comments(self, bead_id):
         return json.loads(self.bd("comments", bead_id, "--json").stdout)
 
-    def close_prs(self, gh_state=None, check=0):
+    def close_prs(self, *args, gh_state=None, check=0):
         env = dict(self.env)
         if gh_state is not None:
             env["FAKE_GH_STATE"] = gh_state
-        return run(self.repo, SCRIPT, env=env, check=check)
+        return run(self.repo, SCRIPT, *args, env=env, check=check)
 
     def make_pr_task(self, blocked, pr="https://github.com/x/y/pull/1"):
         epic = self.bd_id("create", "--title", "Epic", "--type", "epic")
@@ -85,7 +85,7 @@ class TestMergedPr(BdRepoTestCase):
     def test_merged_pr_closes_task_and_epic(self):
         epic, task = self.make_pr_task(blocked=False)
 
-        result = self.close_prs()
+        result = self.close_prs(task)
 
         self.assertIn(f"closed {task}", result.stdout)
         self.assertIn(f"closed {epic}", result.stdout)
@@ -98,7 +98,7 @@ class TestOpenPr(BdRepoTestCase):
     def test_open_pr_changes_nothing(self):
         epic, task = self.make_pr_task(blocked=True)
 
-        result = self.close_prs(gh_state="OPEN")
+        result = self.close_prs(task, gh_state="OPEN")
 
         self.assertEqual(result.stdout, "")
         bead = self.show(task)
@@ -112,7 +112,7 @@ class TestClosedUnmergedPr(BdRepoTestCase):
     def test_closed_unmerged_pr_stops_task(self):
         epic, task = self.make_pr_task(blocked=True, pr="https://github.com/x/y/pull/9")
 
-        result = self.close_prs(gh_state="CLOSED")
+        result = self.close_prs(task, gh_state="CLOSED")
 
         self.assertIn(f"stopped {task}", result.stdout)
         bead = self.show(task)
@@ -122,6 +122,30 @@ class TestClosedUnmergedPr(BdRepoTestCase):
         comments = self.comments(task)
         self.assertEqual(len(comments), 1)
         self.assertIn("https://github.com/x/y/pull/9", comments[0]["text"])
+
+
+class TestArguments(BdRepoTestCase):
+    def test_no_argument_exits_2(self):
+        result = self.close_prs(check=2)
+        self.assertEqual(result.stdout, "")
+
+    def test_two_arguments_exits_2(self):
+        result = self.close_prs("a", "b", check=2)
+        self.assertEqual(result.stdout, "")
+
+    def test_help_exits_0(self):
+        result = self.close_prs("-h", check=0)
+        self.assertIn("Usage: close-prs.sh", result.stdout)
+
+
+class TestWrongState(BdRepoTestCase):
+    def test_task_not_pr_opened_exits_2(self):
+        task = self.bd_id("create", "--title", "T", "--type", "task", "--metadata", '{"verify": "true"}')
+
+        result = self.close_prs(task, check=2)
+
+        self.assertEqual(result.stdout, "")
+        self.assertIn(task, result.stderr)
 
 
 if __name__ == "__main__":
