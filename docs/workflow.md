@@ -140,6 +140,19 @@ A worker's state lives in beads, its worktree and its logs, so nothing is lost w
 
 Workers run detached, so nothing stops one on its own. `scripts/stop-task.sh <task|epic>` ends a task's worker process (TERM, then KILL if it doesn't exit), releases its branch's merge queue, and sets `dispatch_state` to `stopped` with a comment saying a person stopped it — set before the process is signalled and reasserted after, so the task reads `stopped` no matter when `start-worker.sh`'s own `record-task.sh` call lands. Given an epic, it stops every running worker under it, at any depth. `/sdlc:stop [task|epic]` shows what's about to stop, asks, then runs it; `/sdlc:recover` picks a stopped task back up.
 
+## Recovering a task
+
+A stopped, failed or crashed task waits on a person: `finish-task.sh` refuses to merge one whose `dispatch_state` is `stopped` or `failed`, so fixing it by hand in its worktree used to be a dead end. `/sdlc:recover <task> [instructions]` (`skills/recover/SKILL.md`) reads the task's last comment and a reader's summary of `scripts/logs.py <task>`, then offers:
+
+- **Resume** with the instructions, if the worktree and the worker's session transcript still exist: clear `dispatch_state`, then `resume-task.sh`.
+- **Finish** after a fix made by hand: clear `dispatch_state`, then `finish-task.sh`.
+- **Start over**: `scripts/reset-task.sh <task>`. The next dispatch picks the task up from scratch.
+- **Split**: hand off to `/sdlc:split <task>`.
+
+In a headless session it reports these options instead of running anything.
+
+`scripts/reset-task.sh <task>` releases the branch's merge queue, removes the task's worktree and branch (`wt remove -D`, if any), and reopens the task with every `dispatch_*` metadata key unset. `/sdlc:dispatch` (reopening a `Can't` task), `/sdlc:split` (resetting a stopped or failed bead before splitting it) and `/sdlc:recover` all call it, instead of each writing the same steps.
+
 ## Observing
 
 - `/sdlc:status`: workers, the ready queue and settings

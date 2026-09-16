@@ -3,7 +3,7 @@ name: split
 description: Split work into a beads task graph, with acceptance criteria, scope and a verify command on each task. Takes design docs, a design or plan stated earlier in the conversation (for example by sdlc:design or plan mode), a plain prompt, or an existing bead (task or epic) that is too large or was created without a breakdown. Use whenever work needs to become, or be broken further into, beads tasks.
 argument-hint: "[doc paths... | bead-id] [prompt or instructions]"
 model: opus
-allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/create-task.sh *), Bash(bd *), Bash(wt remove *), Read(/${CLAUDE_SKILL_DIR}/references/**)
+allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/create-task.sh *), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/reset-task.sh *), Bash(bd *), Read(/${CLAUDE_SKILL_DIR}/references/**)
 ---
 
 # Split
@@ -104,8 +104,6 @@ Show the graph: `bd list --parent <id> --pretty` for each top-level bead you cre
 - the assumptions and conflicts you wrote down, and that `/sdlc:design` could settle them
 - any source you copied facts from instead of setting `--design`, because it isn't committed on the target branch: it needs a commit before `/sdlc:dispatch`
 
-**If you can ask the user:** ask for approval with AskUserQuestion. Apply any requested changes with `create-task.sh` or `bd`, and validate again. Once the graph is approved, if the bead you split was stopped or failed, ask whether to reset it:
-1. `wt remove -D <metadata.dispatch_branch>`
-2. `bd update <id> --status open`, with `--unset-metadata <key>` for each `dispatch_*` key in its metadata
+**If you can ask the user:** ask for approval with AskUserQuestion. Apply any requested changes with `create-task.sh` or `bd`, and validate again. Once the graph is approved, if the bead you split was stopped or failed, ask whether to reset it: `${CLAUDE_PLUGIN_ROOT}/scripts/reset-task.sh <id>`.
 
 **If you can't ask** (headless session): report only. Don't reset anything; say the reset is available.

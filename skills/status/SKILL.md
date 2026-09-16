@@ -21,7 +21,7 @@ allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/workers.py *), Bash(${CLAUDE_P
 
 Show the three sections above to the user unchanged, in code blocks. Then add one line per task that needs attention:
 - crashed: `/sdlc:dispatch` resumes it or says why it can't.
-- stopped or failed: its last comment says why. `/sdlc:logs <task>` shows what the worker did. Next step: clarify the task, `/sdlc:split <task>`, or fix it by hand in its worktree.
+- stopped or failed: its last comment says why. `/sdlc:logs <task>` shows what the worker did. Next step: `/sdlc:recover <task>`.
 - awaiting-review: use the review commands shown above (review the diff, request changes, or `bd gate resolve`).
 
 Don't run anything else.

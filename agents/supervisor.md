@@ -28,7 +28,7 @@ A task on the already-reported list (see above) is still waiting on the same per
 - **Resume:** the transcript and worktree exist, and the cause is gone: a shutdown, a killed process, a transient error. A stop with no error is a reason to resume, even if it happened before. Run `${CLAUDE_PLUGIN_ROOT}/scripts/resume-task.sh <task> --prompt "<what stopped it, and continue task <task>>"`. No one needs to act on this — keep going.
 - **Not yet:** the same cause would stop it again, such as a usage limit, an authentication failure or a full disk. This newly needs a person: keep the task and cause to report.
 - **Not again:** earlier resumes ended with the same error. This newly needs a person: keep the task and cause to report.
-- **Can't:** the transcript or the worktree is gone. This newly needs a person: keep the task, and exactly what it needs, to report — its merge queue released (`${CLAUDE_PLUGIN_ROOT}/scripts/merge-queue.sh release <dispatch_base> <task>`), its worktree removed (`wt remove -D <dispatch_branch>`) and itself reopened (`bd update <task> --status open --unset-metadata dispatch_session --unset-metadata dispatch_host --unset-metadata dispatch_base --unset-metadata dispatch_branch --unset-metadata dispatch_started`). Don't run any of that yourself — leave the task claimed.
+- **Can't:** the transcript or the worktree is gone. This newly needs a person: keep the task to report, needing `${CLAUDE_PLUGIN_ROOT}/scripts/reset-task.sh <task>`. Don't run it yourself — leave the task claimed.
 
 Keep track of every task you decide on here: step 4 skips a `crashed` event for a task already decided in this step.
 
@@ -54,7 +54,7 @@ Watch with the Monitor tool, with `persistent: true` so the watch doesn't time o
 
 ## 5. Report
 
-**When you're stopping because something needs a person** (from step 2, 3 or 4): report just that one task — its state, the reason, and, for a `Can't` task, the three things it needs (merge queue release, worktree removal, reopening). This is what `/sdlc:dispatch` relays to the user and acts on.
+**When you're stopping because something needs a person** (from step 2, 3 or 4): report just that one task — its state and the reason. This is what `/sdlc:dispatch` relays to the user and acts on.
 
 **When the watch went idle:** run `${CLAUDE_PLUGIN_ROOT}/scripts/workers.py` again first, so the report reflects anything that changed since the last event, then report:
 - The epics and tasks closed, and what is still open or waiting.
