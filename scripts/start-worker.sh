@@ -11,7 +11,8 @@ worktree, and by resume-task.sh after its own checks. Finds the worktree from
 metadata.dispatch_branch, builds the claude -p command from the task's
 metadata, and runs it under setsid so it outlives whoever started it. Writes
 a dispatch_run line to the log first, then, once the worker ends, runs
-record-task.sh to record the attempt.
+record-task.sh to record the attempt, then writes "ended <task-id>" to the
+wake pipe if it exists.
 
 Agent: sdlc:integrator when metadata.dispatch_role is integration, else
 sdlc:worker. That agent's frontmatter picks the model unless overridden.
@@ -83,12 +84,15 @@ effort=$(get .metadata.execution_reasoning_effort)
 [[ -z "$effort" ]] || worker+=(--effort "$effort")
 
 # setsid: the worker must outlive whoever started it.
-setsid -f bash -c '
+# env -u SDLC_SUPERVISOR: the worker's and record-task.sh's bd writes must wake the supervisor, not be skipped as its own.
+env -u SDLC_SUPERVISOR setsid -f bash -c '
   wt_path=$1 root=$2 log=$3 record=$4 id=$5
   shift 5
   printf "\n{\"type\":\"dispatch_run\",\"started\":\"%s\"}\n" "$(date -Is)" >>"$log"
   (cd "$wt_path" && "$@") </dev/null >>"$log" 2>>"$log.err"
   cd "$root" && "$record" "$id" >>"$log.record" 2>&1
+  wake="$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null)/sdlc/wake"
+  [[ -p "$wake" ]] && printf "ended %s\n" "$id" 1<>"$wake"
 ' start-worker "$wt_path" "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")" "$log" "$dir/record-task.sh" "$id" \
   "${worker[@]}" "$prompt" </dev/null >/dev/null 2>&1
 

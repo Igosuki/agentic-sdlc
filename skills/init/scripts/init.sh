@@ -16,8 +16,10 @@ what is missing, and changes a setting only when an option asks for it.
   4. .gitignore: .claude/*.local.md and .worktrees/
   5. .config/wt.toml: adds NAME=COMMAND under [pre-merge] for each --pre-merge, without
      touching a key that is already there
+  6. .beads/hooks/{on_create,on_update,on_close}: writes each hook that wakes the
+     supervisor via the wake pipe, leaving alone one that already exists and isn't ours
 
-Prints one line per step, starting with "created", "set", "kept" or "added".
+Prints one line per step, starting with "created", "set", "kept", "added" or "updated".
 Exit codes: 0 done, 1 a step failed, 2 invalid arguments, not a git repository,
 detached HEAD, or a repository with no commits.
 EOF2
@@ -150,3 +152,36 @@ if [[ ${#pre_merge[@]} -gt 0 ]]; then
     echo "added pre-merge $name"
   done
 fi
+
+hook_marker="# sdlc: wake the supervisor"
+hook_body=$(cat <<HOOK
+#!/usr/bin/env bash
+$hook_marker
+[[ -z "\${SDLC_SUPERVISOR:-}" ]] || exit 0
+id=\$1 event=\$2
+wake="\$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null)/sdlc/wake"
+[[ -p "\$wake" ]] && printf '%s %s\n' "\$event" "\$id" 1<>"\$wake"
+exit 0
+HOOK
+)
+mkdir -p .beads/hooks
+for name in on_create on_update on_close; do
+  path=".beads/hooks/$name"
+  if [[ -f "$path" ]]; then
+    if [[ "$(sed -n '2p' "$path")" == "$hook_marker" ]]; then
+      if [[ "$(cat "$path")" == "$hook_body" ]]; then
+        echo "kept $path"
+      else
+        printf '%s\n' "$hook_body" > "$path"
+        chmod 755 "$path"
+        echo "updated $path"
+      fi
+    else
+      echo "kept $path (not ours; add this line to wake the supervisor: wake=\"\$(git rev-parse --path-format=absolute --git-common-dir)/sdlc/wake\"; [[ -p \"\$wake\" ]] && printf '%s %s\\n' \"\$2\" \"\$1\" 1<>\"\$wake\")"
+    fi
+  else
+    printf '%s\n' "$hook_body" > "$path"
+    chmod 755 "$path"
+    echo "created $path"
+  fi
+done
