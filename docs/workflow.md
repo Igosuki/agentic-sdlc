@@ -104,10 +104,10 @@ The **integration task** is created on an epic's first dispatch. It waits for ev
 
 In `epic-pr` mode, the integration task gates itself on the pull request with a `gh:pr` gate. `watch.py` runs `bd gate check`, and `close-prs.sh` closes the task and the epic once the pull request is merged.
 
-To review an epic before it is integrated, add a gate to its integration task:
+To review an epic before it is integrated, set its `review` metadata (`agent` or `human`, default none): the integration task's `finish-task.sh` applies it to the epic diff (`target...<epic-branch>`), the same way a task's review applies to its own diff, before the merge or the pull request.
 
 ```bash
-bd gate create --type=human --blocks <integration-task> --reason "review the epic branch"
+bd update <epic> --set-metadata review=human
 ```
 
 ## Merge queues

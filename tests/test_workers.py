@@ -84,7 +84,7 @@ class TestWorkers(BdRepoTestCase):
         self.assertIn(f"{task}  stopped  on myhost", result.stdout)
         self.assertIn("last comment: hit a snag", result.stdout)
 
-    def test_awaiting_review_shows_gate_commands(self):
+    def test_awaiting_review_shows_the_review_skill(self):
         task = self.create("create", "--title", "Task", "--type", "task", "--metadata", '{"verify": "true"}')
         self.claim(
             task, "session-c", host="myhost", state="awaiting-review", review_gate="gate-1",
@@ -93,8 +93,7 @@ class TestWorkers(BdRepoTestCase):
 
         result = self.workers()
         self.assertIn("gate: gate-1", result.stdout)
-        self.assertIn(f"bd comments add {task}", result.stdout)
-        self.assertIn("bd gate resolve gate-1", result.stdout)
+        self.assertIn(f"review: /sdlc:review {task}", result.stdout)
 
     def test_pr_opened_shows_pull_request(self):
         task = self.create("create", "--title", "Task", "--type", "task", "--metadata", '{"verify": "true"}')

@@ -25,7 +25,7 @@ def run(cwd, *args, env=None, check=None):
     return result
 
 
-class TestFinishAgentReview(unittest.TestCase):
+class BdWorktreeTestCase(unittest.TestCase):
     """A real bd repo, a real git worktree, and a fake claude on PATH."""
 
     def setUp(self):
@@ -92,6 +92,37 @@ class TestFinishAgentReview(unittest.TestCase):
         run(wt_path, "git", "commit", "-q", "-m", "change")
         return task
 
+    def dispatch_integration_task(self, epic_review=None):
+        """Creates an epic (optionally with review metadata), its integration task claimed on
+        the epic branch's worktree, and one commit on that branch to review."""
+        metadata = {} if epic_review is None else {"review": epic_review}
+        epic = self.bd(
+            "create", "--title", "Epic", "--description", "d", "--acceptance", "a", "--type", "epic",
+            "--metadata", json.dumps(metadata), "--silent",
+        ).stdout.strip()
+        run(self.repo, MERGE_QUEUE_SH, "ensure", epic, check=0)
+        task = self.bd(
+            "create", "--title", f"Integrate {epic} into main", "--parent", epic, "--type", "task",
+            "--metadata", '{"dispatch_role": "integration"}', "--silent",
+        ).stdout.strip()
+        self.bd("update", epic, "--set-metadata", f"dispatch_branch={epic}", "--set-metadata", "dispatch_integration=epic-merge",
+                 "--set-metadata", f"dispatch_integration_task={task}")
+        session = "sess-1"
+        self.bd(
+            "update", task, "--claim",
+            "--set-metadata", f"dispatch_session={session}",
+            "--set-metadata", "dispatch_base=main",
+            "--set-metadata", f"dispatch_branch={epic}",
+            "--set-metadata", "dispatch_role=integration",
+        )
+        run(self.repo, "wt", "switch", "--create", epic, "--base", "main", "--no-cd", "--format", "json", check=0)
+        wt_path = os.path.join(self.repo, ".worktrees", epic)
+        with open(os.path.join(wt_path, "README.md"), "a") as f:
+            f.write("epic change\n")
+        run(wt_path, "git", "add", "README.md")
+        run(wt_path, "git", "commit", "-q", "-m", "epic change")
+        return epic, task
+
     def finish(self, task_id, verdict=None, summary=None, check=None):
         env = dict(self.env)
         if verdict is not None:
@@ -100,6 +131,8 @@ class TestFinishAgentReview(unittest.TestCase):
             env["FAKE_CLAUDE_SUMMARY"] = summary
         return run(self.repo, FINISH_TASK_SH, task_id, env=env, check=check)
 
+
+class TestFinishAgentReview(BdWorktreeTestCase):
     def test_prompt_names_the_review_skill(self):
         task = self.dispatch_task()
 
@@ -150,6 +183,70 @@ class TestFinishAgentReview(unittest.TestCase):
 
     def test_review_none_never_calls_claude(self):
         task = self.dispatch_task(review="none")
+
+        result = self.finish(task, check=0)
+
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(self.claude_calls(), [])
+
+
+class TestFinishIntegrationReview(BdWorktreeTestCase):
+    """An integration task's review level and target come from its epic, not itself."""
+
+    def test_agent_review_reviews_the_epic_not_the_integration_task(self):
+        epic, task = self.dispatch_integration_task(epic_review="agent")
+
+        result = self.finish(task, verdict="approve")
+
+        self.assertEqual(result.returncode, 0)
+        calls = self.claude_calls()
+        self.assertEqual(len(calls), 1)
+        self.assertIn(f"/sdlc:review {epic}", calls[0])
+        self.assertNotIn(f"/sdlc:review {task}", calls[0])
+        self.assertEqual(self.show(task)["metadata"]["dispatch_review"], "approved")
+
+    def test_agent_review_requested_changes_exits_for_the_worker_to_fix(self):
+        epic, task = self.dispatch_integration_task(epic_review="agent")
+
+        result = self.finish(task, verdict="changes", summary="needs work", check=1)
+
+        self.assertIn("review round 1 requested changes", result.stdout)
+        self.assertEqual(self.show(task)["metadata"]["dispatch_review"], "changes")
+
+    def test_human_review_gates_the_integration_task_before_merging(self):
+        epic, task = self.dispatch_integration_task(epic_review="human")
+
+        result = self.finish(task, check=3)
+
+        self.assertIn("needs a person", result.stdout)
+        info = self.show(task)
+        self.assertEqual(info["status"], "in_progress")
+        self.assertEqual(info["metadata"]["dispatch_state"], "awaiting-review")
+        gate = info["metadata"]["dispatch_review_gate"]
+        self.assertTrue(gate)
+        self.assertEqual(self.show(epic)["status"], "open")
+
+        self.bd("gate", "resolve", gate)
+        self.bd("update", task, "--unset-metadata", "dispatch_state")
+        result = self.finish(task, check=0)
+
+        self.assertIn(f"merged {task} into main", result.stdout)
+        self.assertEqual(self.show(task)["status"], "closed")
+        self.assertEqual(self.show(epic)["status"], "closed")
+
+    def test_no_review_metadata_on_the_epic_changes_nothing(self):
+        epic, task = self.dispatch_integration_task(epic_review=None)
+
+        result = self.finish(task, check=0)
+
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(self.claude_calls(), [])
+        self.assertEqual(self.show(task)["status"], "closed")
+        self.assertEqual(self.show(epic)["status"], "closed")
+
+    def test_integration_task_ignores_the_repository_default_review_level(self):
+        self.bd("config", "set", "custom.dispatch.review", "agent")
+        epic, task = self.dispatch_integration_task(epic_review=None)
 
         result = self.finish(task, check=0)
 

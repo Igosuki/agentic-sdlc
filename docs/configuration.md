@@ -38,6 +38,8 @@ bd config set custom.dispatch.review agent
 
 An epic can use a different mode: `bd update <epic> --set-metadata dispatch_integration=epic-pr`, set before its first dispatch. A task can use a different review level: `create-task.sh --review agent`, or `bd update <task> --set-metadata review=human`.
 
+An epic can also carry its own `review` metadata (`bd update <epic> --set-metadata review=human`): the integration task's `finish-task.sh` applies it to the epic diff before integrating, the same way a task's review applies to its own diff. It defaults to `none`, not to the task default or `custom.dispatch.review`, so an epic with no `review` metadata skips review.
+
 ## Per task: execution hints
 
 ```bash

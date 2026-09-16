@@ -50,7 +50,7 @@ There's no `dispatch_state` value for a running worker. A task's worker is **run
 | `dispatch_review_cost` | finish-task.sh | total USD spent on agent review sessions (level `agent`); added into `/sdlc:stats` |
 | `dispatch_review_gate`, `dispatch_review_gate_patch` | finish-task.sh | the open human review gate's id, and the patch id it covers (level `human`) |
 
-On epics: `dispatch_branch` (the epic branch), `dispatch_integration` (the mode used, which also overrides the repository's setting for that epic), and `dispatch_integration_task`.
+On epics: `dispatch_branch` (the epic branch), `dispatch_integration` (the mode used, which also overrides the repository's setting for that epic), `dispatch_integration_task`, and `review` (the epic's own review level, applied to the epic diff by the integration task's `finish-task.sh`; default `none`, not `custom.dispatch.review`).
 
 Status stays standard beads:
 - `open` means waiting or ready
@@ -90,7 +90,7 @@ One ephemeral bead per branch, titled `merge queue <branch>`. Its id is kept in 
   bd gate create --type=human --blocks <task> --reason "..."
   bd gate resolve <gate>
   ```
-- **`human`, the review gate:** for a task with `review=human`, `finish-task.sh` creates this gate itself (`dispatch_review_gate`) instead of merging, and sets `dispatch_state=awaiting-review`. A person runs `/sdlc:review <task>`, which resolves it the same way, `bd gate resolve <gate>`; `resume-reviewed.sh` then picks the task back up. `workers.py` prints the exact commands for a task waiting in this state.
+- **`human`, the review gate:** for a task with `review=human`, `finish-task.sh` creates this gate itself (`dispatch_review_gate`) instead of merging, and sets `dispatch_state=awaiting-review`. A person runs `/sdlc:review <task>`, which resolves it the same way, `bd gate resolve <gate>`; `resume-reviewed.sh` then picks the task back up. `workers.py` prints `/sdlc:review <task>` for a task waiting in this state. For an epic with `review=human`, the integration task's `finish-task.sh` creates this same gate against the epic diff, before merging or opening the pull request.
 
 A gate can block a task but not an epic. `watch.py` runs `bd gate check` on every round.
 

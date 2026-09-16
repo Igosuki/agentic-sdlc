@@ -9,7 +9,8 @@ Run by a task's worker once its work is committed. While holding the merge
 queue of the task's base branch:
   1. checks that the branch has commits and no tracked file has uncommitted changes
   2. reviews the change, per the task's review level (metadata review, else
-     bd config custom.dispatch.review, default none):
+     bd config custom.dispatch.review, default none). For an integration task,
+     the level is the epic's metadata.review instead, default none:
        none    no review
        agent   a separate reviewer session judges the diff; on requested
                changes, the worker fixes them and runs this again (up to 3
@@ -92,16 +93,28 @@ fi
 dirty=$(git -C "$wt_path" status --porcelain --untracked-files=no | cut -c4- | paste -sd' ' -)
 [[ -z "$dirty" ]] || problem "uncommitted changes to tracked files: $dirty. Commit or discard them."
 
-review=$(get "$task" .metadata.review)
-if [[ -z "$review" ]]; then
-  review=$(bd config get custom.dispatch.review 2>/dev/null) || review=""
-  [[ "$review" != *"(not set)" ]] || review=""
+if [[ "$role" == integration ]]; then
+  # An epic's review replaces the gate created by hand; it never falls back to the
+  # task default or bd config, so an epic with no metadata.review skips review.
+  review=$(get "$epic_bead" .metadata.review)
   review=${review:-none}
+else
+  review=$(get "$task" .metadata.review)
+  if [[ -z "$review" ]]; then
+    review=$(bd config get custom.dispatch.review 2>/dev/null) || review=""
+    [[ "$review" != *"(not set)" ]] || review=""
+    review=${review:-none}
+  fi
 fi
 
 if [[ "$review" == agent || "$review" == human ]]; then
   patch=$(git -C "$wt_path" diff "$base...$branch" | git patch-id --stable | cut -d' ' -f1)
 fi
+
+# For an integration task, the epic diff is reviewed against the epic's own
+# description and acceptance, so the skill runs against the epic, not this task.
+review_target=$id
+[[ "$role" != integration ]] || review_target=$epic
 
 if [[ "$review" == agent ]] && ! { [[ "$(get "$task" .metadata.dispatch_review)" == approved && "$(get "$task" .metadata.dispatch_review_patch)" == "$patch" ]]; }; then
   logs="$(git -C "$wt_path" rev-parse --path-format=absolute --git-common-dir)/sdlc/logs"
@@ -119,7 +132,7 @@ if [[ "$review" == agent ]] && ! { [[ "$(get "$task" .metadata.dispatch_review)"
     reviewer+=(--model "${SDLC_REVIEW_MODEL:-sonnet}" --append-system-prompt \
       "You are reviewing another agent's change before it merges. Report only problems that block merging.")
   fi
-  if review_json=$(cd "$wt_path" && "${reviewer[@]}" "/sdlc:review $id" 2>"$logs/$id-$session.review-$rounds.err"); then
+  if review_json=$(cd "$wt_path" && "${reviewer[@]}" "/sdlc:review $review_target" 2>"$logs/$id-$session.review-$rounds.err"); then
     review_exit=0
   else
     review_exit=$?
@@ -178,7 +191,7 @@ if [[ "$review" == human ]]; then
       # A gate is already open for this task: don't stack a second one on top of it.
       person "$id waits for a human review (gate $gate). Stop now: you'll be resumed after the review."
     else
-      gate=$(bd gate create --type=human --blocks "$id" --reason "review $id: git diff $base...$branch in $wt_path" --json | jq -r .id)
+      gate=$(bd gate create --type=human --blocks "$id" --reason "review $review_target: git diff $base...$branch in $wt_path" --json | jq -r .id)
       bd update "$id" --set-metadata "dispatch_review_gate=$gate" --set-metadata "dispatch_review_gate_patch=$patch" \
         --set-metadata dispatch_state=awaiting-review >/dev/null
       person "$id waits for a human review (gate $gate). Stop now: you'll be resumed after the review."

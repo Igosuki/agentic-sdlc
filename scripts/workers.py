@@ -242,9 +242,7 @@ def print_task(task, logs_directory, worktree_paths, now):
     elif state == "awaiting-review":
         gate = metadata.get("dispatch_review_gate", "")
         print(f"  gate: {gate}")
-        print(f"  review:         git -C {wt_path} diff {base}...{branch}")
-        print(f'  request changes: bd comments add {tid} "<what to change>"')
-        print(f"  done:            bd gate resolve {gate}")
+        print(f"  review: /sdlc:review {tid}")
     else:
         print(f"  last comment: {comment or 'none'}")
 
