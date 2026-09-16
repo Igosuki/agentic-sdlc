@@ -27,7 +27,7 @@ A one-off request and a long-running project go through the same flow. What carr
 - **Work can be added at any time.** A new epic with `/sdlc:build`, one task with `/sdlc:create-task`, a finer split of an existing bead with `/sdlc:split`, or a bead created by hand: the queue takes it in.
 - **Progress stays focused.** Epics already in progress go first, so started work gets finished before new work starts.
 - **The history accumulates.** Every worker attempt stays on its task, with session, model, agents, cost and outcome. `/sdlc:stats` sums it per epic, and `/sdlc:logs` shows what each attempt did.
-- **The supervisor holds no state.** Any session, or any person, can take over supervising at any time.
+- **The supervisor holds no state.** It's a script, run as a background command of your session; it looks at beads and the running processes fresh each round, so any session, or any person, can take over supervising at any time.
 
 ## Features
 

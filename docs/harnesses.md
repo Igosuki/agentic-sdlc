@@ -10,11 +10,11 @@ The facts about other harnesses below come from their documentation and source c
 |---|---|---|
 | Start a worker | `run-task.sh` calls `start-worker.sh` | `claude -p --session-id <uuid> --agent sdlc:worker\|sdlc:integrator --permission-mode auto --output-format stream-json --verbose --forward-subagent-text [--model] [--effort] --plugin-dir` |
 | Resume a worker | `resume-task.sh` calls `start-worker.sh --resume` | `claude -p --resume <uuid>` in the same worktree |
-| Know it is alive | `workers.py`, `watch.py`, `finish-task.sh` | `pgrep` on the session id in the command line |
+| Know it is alive | `workers.py`, `supervise.py`, `finish-task.sh` | `pgrep` on the session id in the command line |
 | Read the outcome | `record-task.sh`, `logs.py` | stream-json lines: `result` (`total_cost_usd`, `num_turns`, `is_error`, `modelUsage`), `assistant` and `user` messages, `Agent` tool calls |
 | Keep the worker on track | `hooks/` | SessionStart `additionalContext`, PreToolUse `permissionDecision: deny`, Stop `decision: block` |
 | Skills | `skills/*/SKILL.md` | Claude Code skill frontmatter: `model`, `allowed-tools`, `` !`command` `` injection, `${CLAUDE_SKILL_DIR}` |
-| Supervisor events | `agents/supervisor.md` | the Monitor tool running `watch.py` |
+| Start the supervisor | `skills/dispatch/SKILL.md` | the Bash tool's `run_in_background`, in the same session |
 
 A second harness needs a way to do each of these. Starting, resuming and reading the outcome are the core; hooks and skills make it pleasant.
 
@@ -71,6 +71,6 @@ A first step, not built yet (see the [roadmap](roadmap.md)):
 - `record-task.sh` and `logs.py` read a common summary that the adapters produce, instead of Claude's stream-json directly
 - hooks are ported per harness: shell hooks for Codex, a TypeScript plugin for OpenCode
 
-The planning skills and the supervisor would stay on Claude Code at first. Workers are where cheaper or local models pay off most.
+The planning skills would stay on Claude Code at first. `supervise.py` runs no model, so it needs no harness of its own beyond starting and resuming workers. Workers are where cheaper or local models pay off most.
 
 See also [hypotheses/portability.md](hypotheses/portability.md) for other LLM backends and other trackers.

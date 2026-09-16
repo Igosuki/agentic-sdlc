@@ -92,7 +92,11 @@ One ephemeral bead per branch, titled `merge queue <branch>`. Its id is kept in 
   ```
 - **`human`, the review gate:** for a task with `review=human`, `finish-task.sh` creates this gate itself (`dispatch_review_gate`) instead of merging, and sets `dispatch_state=awaiting-review`. A person runs `/sdlc:review <task>`, which resolves it the same way, `bd gate resolve <gate>`; `resume-reviewed.sh` then picks the task back up. `workers.py` prints `/sdlc:review <task>` for a task waiting in this state. For an epic with `review=human`, the integration task's `finish-task.sh` creates this same gate against the epic diff, before merging or opening the pull request.
 
-A gate can block a task but not an epic. `watch.py` runs `bd gate check` on every round.
+A gate can block a task but not an epic. `supervise.py` runs `bd gate check` on sweeps, while a task's pull request is open.
+
+## Hooks
+
+`/sdlc:init` installs `.beads/hooks/on_create`, `on_update` and `on_close`. Each one writes `<event> <id>` to the wake pipe `<git-common-dir>/sdlc/wake` when the pipe exists, waking `supervise.py`. A write made with `SDLC_SUPERVISOR` set — which `supervise.py` sets for its own `bd` calls — is skipped, so the supervisor's own writes don't wake it again. Init leaves alone a hook that already exists and isn't its own; it prints the line to add to it instead.
 
 ## Configuration
 

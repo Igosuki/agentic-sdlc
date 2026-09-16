@@ -1,6 +1,6 @@
 ---
 name: init
-description: Prepare the current project for sdlc. Initializes beads, sets the integration mode and target branch, creates .claude/sdlc.local.md, and ignores local files. Safe to run again. Use in a project before its first design or dispatch, or to change these settings.
+description: Prepare the current project for sdlc. Initializes beads, sets the integration mode and target branch, creates .claude/sdlc.local.md, ignores local files, and installs the beads hooks that wake the supervisor. Safe to run again. Use in a project before its first design or dispatch, or to change these settings.
 argument-hint: "[--integration direct|epic-merge|epic-pr] [--target BRANCH] [--parallel N] [--workflow build|none]"
 disable-model-invocation: true
 model: sonnet

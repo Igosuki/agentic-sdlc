@@ -4,10 +4,11 @@
 
 ```text
 .claude-plugin/        plugin.json, marketplace.json
-agents/                 supervisor.md (dispatches and follows workers), worker.md (owns one
-                        task), integrator.md (owns an epic's integration task)
+agents/                 worker.md (owns one task), integrator.md (owns an epic's
+                        integration task)
 hooks/                 hooks.json and the worker hooks
-scripts/               every executable: worker lifecycle, task creation, project checks
+scripts/               every executable: supervision (supervise.py), worker lifecycle,
+                        task creation, project checks
 skills/
   design/              design documents
   split/               task graphs, from a doc, a plan, a prompt or an existing bead
@@ -25,7 +26,7 @@ docs/                  this documentation
 - **Scripts explain themselves:** `--help` prints the usage, and invalid input lists every problem, prints the usage and exits 2. Skills don't document the scripts they call.
 - **Skills call scripts** through `${CLAUDE_PLUGIN_ROOT}`, pre-approved in `allowed-tools`, so the script's source never enters the context.
 - **Headless-aware skills:** ask with AskUserQuestion when it is available. Otherwise decide, and record the assumption. Never ask in plain text and stop.
-- **Planning skills use `model: opus`** and gather information with the skills, agents and MCP tools the user installed. The supervisor and workers run on Sonnet.
+- **Planning skills use `model: opus`** and gather information with the skills, agents and MCP tools the user installed. Workers run on Sonnet; the supervisor is a script, with no model.
 - **Nothing named "sdlc"** in bead statuses or labels. Runtime keys are prefixed `dispatch_`.
 
 ## Tests

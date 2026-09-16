@@ -45,7 +45,7 @@ What exists today is described in [workflow](workflow.md). This is what comes ne
 - **A dashboard** for status, stats and logs across projects.
 - **Retention of worker logs** in `.git/sdlc/logs`.
 - **Channels** (a Claude Code research preview) as an optional event transport:
-  - an sdlc channel that the scripts push events to (a worker ending, a merge, a merged pull request), so the supervisor reacts without polling, with `watch.sh` as the fallback
+  - an sdlc channel that the scripts push events to (a worker ending, a merge, a merged pull request), feeding the same wake pipe `supervise.py` already sleeps on, with the sweep timer as the fallback
   - pairing the supervisor with the official Telegram or Discord channel, for review approvals, alerts about stopped tasks and permission prompts from a phone
 
   Channels still need the session to be open, and during the preview a custom channel needs `--dangerously-load-development-channels`.
