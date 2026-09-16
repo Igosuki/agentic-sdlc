@@ -14,7 +14,7 @@ The facts about other harnesses below come from their documentation and source c
 | Read the outcome | `record-task.sh`, `logs.py` | stream-json lines: `result` (`total_cost_usd`, `num_turns`, `is_error`, `modelUsage`), `assistant` and `user` messages, `Agent` tool calls |
 | Keep the worker on track | `hooks/` | SessionStart `additionalContext`, PreToolUse `permissionDecision: deny`, Stop `decision: block` |
 | Skills | `skills/*/SKILL.md` | Claude Code skill frontmatter: `model`, `allowed-tools`, `` !`command` `` injection, `${CLAUDE_SKILL_DIR}` |
-| Supervisor events | `skills/dispatch` | the Monitor tool running `watch.py` |
+| Supervisor events | `agents/supervisor.md` | the Monitor tool running `watch.py` |
 
 A second harness needs a way to do each of these. Starting, resuming and reading the outcome are the core; hooks and skills make it pleasant.
 

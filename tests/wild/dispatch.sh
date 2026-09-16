@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # Headless run of the whole flow on a new project: design, split, add a
 # split task another task waits on, then dispatch until the epic is idle.
-# /sdlc:dispatch follows its own workers (Monitor + watch.py) until idle, so
-# one call with --epic and --parallel 2 replaces polling here.
+# /sdlc:dispatch only confirms and starts the supervisor, and there's no one
+# here to confirm with, so this drives the sdlc:supervisor agent directly.
+# It follows its own workers (Monitor + watch.py) until idle, so one call
+# with --epic and --parallel 2 replaces polling here.
 set -euo pipefail
 
 plugin_dir="$(cd "$(dirname "$(readlink -f "$0")")/../.." && pwd)"
@@ -57,7 +59,7 @@ else
   echo "no task under $epic to split, skipping"
 fi
 
-step 4-dispatch "" "/sdlc:dispatch $epic --parallel 2"
+step 4-dispatch "--agent sdlc:supervisor" "$epic --parallel 2"
 
 {
   echo "## Result"

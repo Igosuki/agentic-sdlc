@@ -4,8 +4,9 @@
 
 ```text
 .claude-plugin/        plugin.json, marketplace.json
-agents/                 reader.md (read-only, answers one question), worker.md (owns one task),
-                        integrator.md (owns an epic's integration task)
+agents/                 reader.md (read-only, answers one question), supervisor.md (dispatches
+                        and follows workers), worker.md (owns one task), integrator.md (owns
+                        an epic's integration task)
 commands/              entry points: setup, init, build, dispatch, create-task, status, stats, logs
 hooks/                 hooks.json and the worker hooks
 scripts/               every executable: worker lifecycle, task creation, project checks

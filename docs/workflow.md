@@ -42,12 +42,12 @@ In plan mode, split writes the graph into the plan instead, and creates it once 
 
 ## 3. Dispatch
 
-`/sdlc:dispatch [epic]` is the supervisor: a Claude Code session, on Sonnet, that starts and follows workers. It holds no state of its own. Everything lives in beads and on disk, so any session can take over at any time.
+`/sdlc:dispatch [epic]` confirms what's about to happen with the user, then starts the `sdlc:supervisor` agent (`agents/supervisor.md`), on Sonnet, in the background, and follows what it reports. The supervisor holds no state of its own — everything lives in beads and on disk, so any session can take over at any time — and it can't ask the user anything, so it reports what it wants instead of deciding, leaving that to `/sdlc:dispatch`.
 
 1. **Look:** `workers.py` shows dispatched tasks and their state. `next-tasks.py` shows ready tasks in work order.
-2. **Handle crashed and stopped workers.** A crashed worker is resumed, reported, or proposed for reopening. A stopped worker is reported with its reason.
+2. **Handle crashed and stopped workers.** A crashed worker is resumed or reported; one whose transcript or worktree is gone is reported, with what reopening it needs, for `/sdlc:dispatch` to ask the user and act on. A stopped worker is reported with its reason.
 3. **Dispatch:** `dispatch-next.sh` starts ready tasks up to the parallel limit.
-4. **Follow:** `watch.py` runs under the Monitor tool and prints an event for each task that becomes ready, each worker that ends or crashes, and each epic that closes. The supervisor reacts to each event, until nothing is running and nothing is ready.
+4. **Follow:** `watch.py` runs under the Monitor tool and prints an event for each task that becomes ready, each worker that ends or crashes, and each epic that closes. The supervisor reacts to each event, until nothing is running and nothing is ready, then reports back.
 
 ### Work order
 
