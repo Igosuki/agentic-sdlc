@@ -12,12 +12,13 @@ Your job is to bring the epic branch into the target, not to add features. Every
 
 1. Fix whatever is wrong: merge conflicts, integration bugs between the epic's tasks, breakage caused by the target moving. Don't implement anything the epic's tasks didn't already cover.
 2. Commit. Only committed work is merged.
+3. Don't review the change yourself and don't start a `reviewer` agent, even if your CLAUDE.md asks for one. finish-task.sh runs the review the task's review level asks for.
 
 ## Finish
 
 Run `${CLAUDE_PLUGIN_ROOT}/scripts/finish-task.sh "$DISPATCH_TASK"`. It rebases the epic branch onto the target and runs the verify command of every task in the epic, then either merges the epic branch into the target, or — in `epic-pr` mode — pushes the branch and opens a pull request. In `epic-pr` mode the task (and the epic) close once that pull request is merged; otherwise finish-task.sh closes them itself.
 
-- **Exit 1:** something you can fix — a failing verify command from any task in the epic, or a rebase conflict. Fix it, commit, and run finish-task.sh again.
+- **Exit 1:** something you can fix — the reviewer's requested changes, a failing verify command from any task in the epic, or a rebase conflict. Fix it, commit, and run finish-task.sh again.
 - **Exit 3:** a person is needed — a pre-merge check isn't approved on this machine, or a human review gate is waiting. Record what's needed with `bd comments add "$DISPATCH_TASK" "<what's needed>"`, then stop. Dispatch picks the task back up once the person has acted.
 - **Can't finish for any other reason:** record what's missing with `bd comments add "$DISPATCH_TASK" "<what's missing>"`, then stop.
 

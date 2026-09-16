@@ -8,7 +8,7 @@ flowchart TD
   B --> C[split: task graph in beads]
   C --> D[dispatch: supervisor]
   D -->|work order, parallel limit| E[run-task.sh: claim, worktree, start-worker.sh]
-  E --> F[sdlc:worker agent: implement, commit, review]
+  E --> F[sdlc:worker agent: implement, commit]
   F --> G[finish-task.sh: rebase, verify, merge, close]
   G -->|problem| F
   G --> H[record-task.sh: cost, model, agents, event bead]
@@ -62,7 +62,7 @@ A task is dispatchable when it is ready in beads, has no children, and has a ver
 A worker is one headless Claude Code session, running as the `sdlc:worker` agent in one task's worktree, that owns that task until it is closed. Its system prompt (`agents/worker.md`) carries the whole lifecycle below, so it survives a compaction or a resume.
 
 1. **Start:** `run-task.sh` claims the task. In the same update it records the session id, base branch, branch, host and start time. It then creates the worktree with `wt switch --create`, and calls `start-worker.sh`, which builds the `claude -p --agent sdlc:worker` command and starts it detached with `setsid`, so the worker outlives whoever dispatched it.
-2. **Implement:** the worker implements the task itself, or hands it to the agent named by the task's `execution_agent_type` metadata (or to whatever the user's CLAUDE.md asks for). It commits, and reviews the change when it judges that worthwhile.
+2. **Implement:** the worker implements the task itself, or hands it to the agent named by the task's `execution_agent_type` metadata (or to whatever the user's CLAUDE.md asks for). It commits. It doesn't review its own change or start a reviewer agent, even when the user's CLAUDE.md asks for one: `finish-task.sh` runs the review the task's review level asks for (see review levels).
 3. **Finish:** the worker runs `finish-task.sh`, which:
    - checks that work is committed and no tracked file is left modified
    - reviews the change, per the task's review level (below)
