@@ -12,7 +12,8 @@ Prints the dispatch settings as "key=value" lines, or the value of one key.
   workflow     "build" routes new work in this project to sdlc:build (SessionStart hook);
                from the same frontmatter, no default
   integration  direct, epic-merge or epic-pr, from bd config custom.dispatch.integration (default direct)
-  target       branch tasks end up in, from bd config custom.dispatch.target (default main)
+  target       branch tasks end up in, from bd config custom.dispatch.target
+               (default: the main checkout's current branch, else main)
   review       none, agent or human: the review level for tasks with no review
                metadata of their own, from bd config custom.dispatch.review (default none)
 
@@ -52,7 +53,7 @@ value_for() {
     parallel)    v=$(local_setting parallel); echo "${v:-2}" ;;
     workflow)    local_setting workflow ;;
     integration) v=$(bd_setting integration); echo "${v:-direct}" ;;
-    target)      v=$(bd_setting target); echo "${v:-main}" ;;
+    target)      v=$(bd_setting target); [[ -n "$v" ]] || v=$(git -C "$root" branch --show-current 2>/dev/null) || true; echo "${v:-main}" ;;
     review)      v=$(bd_setting review); echo "${v:-none}" ;;
     *)           return 2 ;;
   esac

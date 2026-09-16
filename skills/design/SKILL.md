@@ -17,9 +17,9 @@ Be precise only where two people implementing different parts could otherwise bu
 
 ## Reading
 
-Run `bd` commands yourself; delegate reading a large `bd` result too (a long `bd list`, or a `bd show` with a long description or many comments), instead of loading it into your own context.
+Gather information with the skills, agents and MCP tools this session has. Users install the ones that fit their projects, such as code search, code graphs, documentation lookups or bulk readers. Find them in your context, and through tool search for deferred tools. Use what fits each source; where nothing does, read and search the repository yourself.
 
-Don't read files, documents or external sources yourself. Give each read to the `sdlc:reader` agent (Agent tool, `subagent_type: sdlc:reader`). Tell it exactly what to return — paths, contracts and data shapes verbatim, build and test commands, and anything that conflicts with the request — and run independent reads in parallel. Then think over what it returns.
+Tools that read the repository or its beads are local sources. Anything that reaches outside the repository is an external source.
 
 ## 1. Find prior art
 

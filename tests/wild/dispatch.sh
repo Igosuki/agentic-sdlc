@@ -35,7 +35,7 @@ step() {
 
 planning=$(cat /proc/sys/kernel/random/uuid)
 step 1-design "--session-id $planning" "/sdlc:design $request"
-step 2-split "--resume $planning" "/sdlc:split"
+step 2-split "--resume $planning" "/sdlc:split as exactly one top-level epic"
 
 bd where >/dev/null 2>&1 || { echo "no beads after split, stopping"; exit 1; }
 git add -A && git commit -q -m "Design and tasks" && echo "committed design and tasks"

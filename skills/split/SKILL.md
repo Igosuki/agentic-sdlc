@@ -14,9 +14,9 @@ Split creates beads. If plan mode is active, stop and say that split needs plan 
 
 ## Reading
 
-Don't read files, documents or external sources yourself. Give each read to the `sdlc:reader` agent (Agent tool, `subagent_type: sdlc:reader`). Tell it exactly what to return — paths, contracts and data shapes verbatim, build and test commands, and anything that conflicts with the request — and run independent reads in parallel. Then think over what it returns.
+Gather information with the skills, agents and MCP tools this session has. Users install the ones that fit their projects, such as code search, code graphs, documentation lookups or bulk readers. Find them in your context, and through tool search for deferred tools. Use what fits each source; where nothing does, read and search the repository yourself.
 
-The one exception is `references/task-rules.md` (used in step 3): read it yourself. A reader's summary would reword its rules.
+The one exception is `references/task-rules.md` (used in step 3): read it yourself. A summary would reword its rules.
 
 Bead commands (`bd show`, `bd list`, `bd search`, `bd comments`) return little and can run directly.
 
@@ -34,14 +34,14 @@ If none applies, ask what to split.
 
 ## 2. Gather
 
-Whatever the source, have the reader collect:
+Whatever the source, collect:
 - **Tooling:** manifests, build and test setup, directory layout, so tasks name real paths and real verify commands. If the repository has no tooling yet, the first task sets it up, and its verify command proves that it works.
 - **The code and docs** the work touches.
 
 Then, by source:
 - **Docs:** read them in full, along with the prior art they list for the parts the tasks will touch.
 - **A bead:** the document that covers it, looked up in this order: the bead's `metadata.design` or spec; its parent's; a design document matching its title, in `docs/design/` or wherever the repository keeps designs.
-- **A bead that was stopped or failed** (`metadata.dispatch_state` is `stopped` or `failed`): its worker gave up. Read its last comment with `bd comments <id>`. Have the reader summarize `git log <metadata.dispatch_base>..<metadata.dispatch_branch>`, run in the worktree whose `.branch` in `wt list --format json` is `metadata.dispatch_branch`.
+- **A bead that was stopped or failed** (`metadata.dispatch_state` is `stopped` or `failed`): its worker gave up. Read its last comment with `bd comments <id>`. Summarize `git log <metadata.dispatch_base>..<metadata.dispatch_branch>`, run in the worktree whose `.branch` in `wt list --format json` is `metadata.dispatch_branch`.
 
 Existing work:
 - **Already covered:** unless the source is a bead, `bd search <terms>` and `bd list --type epic` find an epic or task that already covers this work. If one does, stop and say so.

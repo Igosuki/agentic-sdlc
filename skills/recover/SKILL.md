@@ -3,7 +3,7 @@ name: recover
 description: Pick up a stopped, failed or crashed task. Reads its last comment and a summary of what its worker did, then offers to resume it with new instructions, finish it after a fix made by hand, start it over, or split it. User only.
 argument-hint: "<task-id> [instructions]"
 disable-model-invocation: true
-allowed-tools: Bash(bd *), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/logs.py *), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/resume-task.sh *), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/finish-task.sh *), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/reset-task.sh *), Agent
+allowed-tools: Bash(bd *), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/logs.py *), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/resume-task.sh *), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/finish-task.sh *), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/reset-task.sh *)
 ---
 
 # Recover
@@ -14,7 +14,7 @@ The first argument is the task id. The rest, if any, are instructions for a resu
 
 ## 1. What happened
 
-`bd show <task> --json` and `bd comments <task>` for its last comment. Give the `sdlc:reader` agent (Agent tool, `subagent_type: sdlc:reader`) `${CLAUDE_PLUGIN_ROOT}/scripts/logs.py <task>` to summarize what the worker did and why it stopped.
+`bd show <task> --json` and `bd comments <task>` for its last comment. `${CLAUDE_PLUGIN_ROOT}/scripts/logs.py <task>` for what the worker did and why it stopped.
 
 ## 2. Offer a way forward
 

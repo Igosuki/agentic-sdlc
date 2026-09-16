@@ -3,7 +3,7 @@ set -euo pipefail
 
 usage() {
   cat <<'EOF2'
-Usage: checks.sh
+Usage: print-merge-checks.sh
 
 Prints candidate pre-merge check commands found in the current repository,
 the pre-merge commands already in .config/wt.toml, the run: commands of the

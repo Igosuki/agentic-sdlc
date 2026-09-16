@@ -3,7 +3,7 @@ set -uo pipefail
 
 usage() {
   cat <<'EOF2'
-Usage: check.sh
+Usage: setup-checks.sh
 
 Checks this machine for what sdlc needs, one line per item:
   os <name>                    operating system, with a warning appended if not Linux

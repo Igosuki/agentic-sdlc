@@ -48,7 +48,7 @@ A skill that another skill starts through the Skill tool must stay startable by 
 | init | command | skill, user only | user | Runs once per project, with side effects: `bd init`, config, a commit. Every other skill assumes it has run. |
 | setup | command | skill, user only | user | Runs once per machine and installs tools. A different job from init. |
 | status, stats, logs | command | skill, user only | user | Read-only views over scripts. User-only keeps their descriptions out of every session. dispatch and the supervisor run the scripts they need themselves. |
-| reader, worker, integrator, supervisor | agent | agent, unchanged | skills, dispatch, `claude --agent` | Isolated context, their own model and tools. The worker's prompt must survive compaction, which only an agent's system prompt does. |
+| worker, integrator, supervisor | agent | agent, unchanged | skills, dispatch, `claude --agent` | Isolated context, their own model and tools. The worker's prompt must survive compaction, which only an agent's system prompt does. |
 | `session-start.sh` (SessionStart) | hook | hook, unchanged | Claude Code | Injects the one opt-in project rule "start new work with `sdlc:build`". Costs no tokens when the project hasn't opted in, and runs again after compaction. |
 | `worker-guard.sh` (PreToolUse on Bash) | hook | hook, unchanged | Claude Code | A guardrail: workers must not close, merge or push outside `finish-task.sh`. Plugin agents can't declare hooks, so it lives in `hooks.json`, gated on `DISPATCH_TASK`. |
 | `worker-stop.sh` (Stop) | hook | hook, unchanged | Claude Code | Keeps a worker from ending with its task still claimed and no comment. Same pattern as ralph-loop's Stop hook. |
@@ -121,7 +121,7 @@ What happens today:
 | pull request | the pull request's diff and its review comments | the epic | epic-pr mode. Either post a review with `gh pr review`, or read the reviewers' comments and turn them into work (see open questions). |
 
 When a person runs it:
-1. The reader summarizes the diff against the acceptance.
+1. The skill summarizes the diff against the acceptance.
 2. The skill shows the verify result and any earlier agent findings (`dispatch_review*` metadata and comments).
 3. It asks for a verdict:
    - **approve:** `bd gate resolve`

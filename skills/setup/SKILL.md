@@ -9,7 +9,7 @@ allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/check.sh)
 # Setup
 
 Machine check:
-!`${CLAUDE_PLUGIN_ROOT}/scripts/check.sh`
+!`scripts/setup-checks.sh`
 
 ## 1. Report
 
@@ -17,13 +17,13 @@ If the `os` line isn't Linux, say so first: the dispatch scripts don't support i
 
 ## 2. Required tools
 
-For each `missing` or `old` tool, give the installation instructions from its own documentation. If you need the exact commands, have the `sdlc:reader` agent (Agent tool, `subagent_type: sdlc:reader`) read the page:
+For each `missing` or `old` tool, give the installation instructions from its own documentation. If you need the exact commands, read the page:
 - beads (`bd`): <https://beads.gascity.com/getting-started/installation>
 - worktrunk (`wt`): <https://github.com/max-sixty/worktrunk>
 - Claude Code: <https://code.claude.com>
 - `git`, `jq`, `uuidgen`, `setsid`, `pgrep`, `timeout`, `python3`: the system package manager (on Debian and Ubuntu: `git jq uuid-runtime util-linux procps coreutils python3`)
 
-Install only what the user agrees to through AskUserQuestion, one tool at a time, then run `${CLAUDE_PLUGIN_ROOT}/scripts/check.sh` again. For a command that needs `sudo` or a password, don't run it yourself: give the command and ask the user to run it, for example with `! <command>` at the prompt. In a headless session (AskUserQuestion isn't available), don't install anything: report the instructions.
+Install only what the user agrees to through AskUserQuestion, one tool at a time, then run `scripts/setup-checks.sh` again. For a command that needs `sudo` or a password, don't run it yourself: give the command and ask the user to run it, for example with `! <command>` at the prompt. In a headless session (AskUserQuestion isn't available), don't install anything: report the instructions.
 
 ## 3. Recommended companions
 

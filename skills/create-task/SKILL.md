@@ -12,7 +12,7 @@ Request: $ARGUMENTS
 
 ## 1. Gather context
 
-Don't read files, documents or external sources yourself. Give each read to the `sdlc:reader` agent (Agent tool, `subagent_type: sdlc:reader`). Tell it exactly what to return — paths, contracts and data shapes verbatim, build and test commands, and anything that conflicts with the request — and run independent reads in parallel. Then think over what it returns. Ask it for:
+Gather information with the skills, agents and MCP tools this session has. Users install the ones that fit their projects, such as code search, code graphs, documentation lookups or bulk readers. Find them in your context, and through tool search for deferred tools. Use what fits each source; where nothing does, read and search the repository yourself. Collect:
 - the files and interfaces the task touches
 - how the project is built and tested, so the verify command is real
 - the design document that covers the task, if there is one

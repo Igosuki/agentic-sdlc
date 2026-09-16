@@ -25,7 +25,7 @@ flowchart TD
 - **Questions:** it asks only where the answer changes a contract, a goal or the scope. In a headless session it records assumptions instead.
 - **Output:** the design, stated in the reply (or in the plan file, in plan mode): a prior-art section, open questions and assumptions, and whichever of goals, definition of done, glossary, contracts and decisions the request needs. It also edits existing docs — a README, an ADR, API docs, an earlier design — wherever this design makes them wrong or incomplete. It writes a new document only when the user asks for one, at the location the request names, then the repository's existing convention, then `docs/design/<slug>.md`.
 
-Reading is delegated to the `sdlc:reader` agent. The planning skills run on Opus and only think about what comes back.
+The planning skills gather information with the skills, agents and MCP tools the session has (code search, documentation lookups, bulk readers: whatever the user installed), and read the repository themselves where nothing fits.
 
 ## 2. Split
 
@@ -153,7 +153,7 @@ Workers run detached, so nothing stops one on its own. `scripts/stop-task.sh <ta
 
 ## Recovering a task
 
-A stopped, failed or crashed task waits on a person: `finish-task.sh` refuses to merge one whose `dispatch_state` is `stopped` or `failed`, so fixing it by hand in its worktree used to be a dead end. `/sdlc:recover <task> [instructions]` (`skills/recover/SKILL.md`) reads the task's last comment and a reader's summary of `scripts/logs.py <task>`, then offers:
+A stopped, failed or crashed task waits on a person: `finish-task.sh` refuses to merge one whose `dispatch_state` is `stopped` or `failed`, so fixing it by hand in its worktree used to be a dead end. `/sdlc:recover <task> [instructions]` (`skills/recover/SKILL.md`) reads the task's last comment and `scripts/logs.py <task>`, then offers:
 
 - **Resume** with the instructions, if the worktree and the worker's session transcript still exist: clear `dispatch_state`, then `resume-task.sh`.
 - **Finish** after a fix made by hand: clear `dispatch_state`, then `finish-task.sh`.

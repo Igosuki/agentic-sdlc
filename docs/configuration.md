@@ -33,7 +33,7 @@ bd config set custom.dispatch.review agent
 | Key | Default | Meaning |
 |---|---|---|
 | `custom.dispatch.integration` | `direct` | `direct`, `epic-merge` or `epic-pr` (see [workflow](workflow.md#integration-modes)) |
-| `custom.dispatch.target` | `main` | branch the work ends up in |
+| `custom.dispatch.target` | the main checkout's current branch | branch the work ends up in |
 | `custom.dispatch.review` | `none` | `none`, `agent` or `human`: review level for tasks with no `review` metadata of their own (see [workflow](workflow.md#review-levels)) |
 
 An epic can use a different mode: `bd update <epic> --set-metadata dispatch_integration=epic-pr`, set before its first dispatch. A task can use a different review level: `create-task.sh --review agent`, or `bd update <task> --set-metadata review=human`.

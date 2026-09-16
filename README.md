@@ -139,7 +139,7 @@ Shared by everyone using the repository, in beads:
 
 ```bash
 bd config set custom.dispatch.integration epic-merge   # direct (default), epic-merge or epic-pr
-bd config set custom.dispatch.target main              # branch the work ends up in (default main)
+bd config set custom.dispatch.target main              # branch the work ends up in (default: the current branch)
 bd config set custom.dispatch.review agent             # none (default), agent or human
 ```
 

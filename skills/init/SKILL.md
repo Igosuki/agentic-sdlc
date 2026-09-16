@@ -4,7 +4,6 @@ description: Prepare the current project for sdlc. Initializes beads, sets the i
 argument-hint: "[--integration direct|epic-merge|epic-pr] [--target BRANCH] [--parallel N] [--workflow build|none]"
 disable-model-invocation: true
 model: sonnet
-allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/init.sh *), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/checks.sh *), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/settings.sh *), Bash(bd config get custom.dispatch.integration *), Bash(bd config get custom.dispatch.target *), Bash(git branch --show-current *), Bash(git status --porcelain -- .gitignore .beads), Bash(git add -- .gitignore .beads), Bash(git commit -m "Ignore sdlc local files" -- .gitignore .beads)
 ---
 
 # Init
@@ -14,9 +13,7 @@ Arguments: $ARGUMENTS
 Current settings:
 !`${CLAUDE_PLUGIN_ROOT}/scripts/settings.sh 2>&1 || true`
 
-Raw saved values (blank means not set) and the current branch:
-!`bd config get custom.dispatch.integration 2>&1 || true`
-!`bd config get custom.dispatch.target 2>&1 || true`
+Current branch:
 !`git branch --show-current 2>&1 || true`
 
 ## 1. Choose
@@ -25,19 +22,19 @@ A setting given in `$ARGUMENTS` is already decided: don't ask about it, pass it 
 
 Headless session (no AskUserQuestion): ask nothing, assume nothing. Pass on to `init.sh` in step 3 only the options `$ARGUMENTS` gives. `init.sh` already keeps every saved value and fills in a default for whatever nobody saved — don't add `--integration direct`, `--target <current branch>` or `--workflow none` as if they were the headless defaults; that overwrites a saved setting nobody asked to change.
 
-Interactive session: ask with one AskUserQuestion, but only about settings that aren't already saved (see the raw values above — blank means not set). If you do ask about a setting that already has a saved value, e.g. because the user wants to review it, list the saved value first as the recommended option.
+Interactive session: ask with one AskUserQuestion about each setting `$ARGUMENTS` doesn't give, listing its current value first as the recommended option.
 - **Integration mode:**
-  - `direct` (recommended to start): tasks merge straight into the target branch
+  - `direct`: tasks merge straight into the target branch
   - `epic-merge`: each epic has its own branch, merged into the target at the end
   - `epic-pr`: like `epic-merge`, but ends with a pull request; it needs a git remote and `gh`
-- **Target branch:** the current branch is recommended.
+- **Target branch:** offer the current branch too when it differs from the current target.
 - **New work through `/sdlc:build`:** yes sets `workflow: build`, so new sessions in this project start new work with `/sdlc:build`.
 
-"No" to build routing depends on what's saved: on a first run, with no saved `workflow`, it means passing nothing (omit `--workflow` in step 3). To remove a saved `workflow: build`, pass `--workflow none`.
+"No" to build routing passes `--workflow none` only when the current settings show `workflow=build`; otherwise it passes nothing.
 
 ## 2. Project checks
 
-Run `${CLAUDE_PLUGIN_ROOT}/scripts/checks.sh`. From its `candidate` lines, propose the fast checks as pre-merge hooks: type check, lint, unit tests. Don't propose slow end-to-end, deploy or release steps, even if `checks.sh` finds their commands (e.g. from `ci` lines). Skip a check whose name already appears in an `existing pre-merge` line.
+Run `print-merge-checks`. From its `candidate` lines, propose the fast checks as pre-merge hooks: type check, lint, unit tests. Don't propose slow end-to-end, deploy or release steps, even if `checks.sh` finds their commands (e.g. from `ci` lines). Skip a check whose name already appears in an `existing pre-merge` line.
 
 Ask with AskUserQuestion (multiSelect) which of the proposed checks to add as pre-merge hooks. If AskUserQuestion isn't available (headless session), skip this step: add none.
 
