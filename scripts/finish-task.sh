@@ -109,30 +109,17 @@ if [[ "$review" == agent ]] && ! { [[ "$(get "$task" .metadata.dispatch_review)"
   rounds=$(get "$task" .metadata.dispatch_review_rounds); rounds=${rounds:-0}; rounds=$((rounds + 1))
 
   schema='{"type":"object","properties":{"verdict":{"type":"string","enum":["approve","changes"]},"summary":{"type":"string"},"findings":{"type":"array","items":{"type":"object","properties":{"file":{"type":"string"},"line":{"type":"integer"},"severity":{"type":"string","enum":["blocker","major","minor"]},"problem":{"type":"string"},"fix":{"type":"string"}},"required":["file","severity","problem"]}}},"required":["verdict","summary","findings"]}'
-  prompt="Task $id: $(get "$task" .title)
-
-$(get "$task" .description)
-
-Acceptance:
-$(get "$task" .acceptance_criteria)
-"
-  [[ -z "$(get "$task" .metadata.scope)" ]] || prompt+="
-Scope: $(get "$task" .metadata.scope)"
-  prompt+="
-Verify command:
-$(get "$task" .metadata.verify)
-
-Review the change on branch $branch against $base: run git diff $base...$branch and read the code you need. Report only problems that matter: bugs, acceptance not met, security issues, changes outside the scope, missing tests for new behaviour. Don't report style preferences or problems that were already there. Approve when nothing should block merging."
+  plugin_root=$(cd "$dir/.." && pwd)
 
   reviewer=(env -u DISPATCH_TASK timeout 900 claude -p --output-format json --permission-mode auto \
-    --disallowedTools "Edit Write NotebookEdit" --json-schema "$schema")
+    --plugin-dir "$plugin_root" --disallowedTools "Edit Write NotebookEdit" --json-schema "$schema")
   if [[ -f "$HOME/.claude/agents/reviewer.md" || -f "$main_root/.claude/agents/reviewer.md" ]]; then
     reviewer+=(--agent reviewer)
   else
     reviewer+=(--model "${SDLC_REVIEW_MODEL:-sonnet}" --append-system-prompt \
       "You are reviewing another agent's change before it merges. Report only problems that block merging.")
   fi
-  if review_json=$(cd "$wt_path" && "${reviewer[@]}" "$prompt" 2>"$logs/$id-$session.review-$rounds.err"); then
+  if review_json=$(cd "$wt_path" && "${reviewer[@]}" "/sdlc:review $id" 2>"$logs/$id-$session.review-$rounds.err"); then
     review_exit=0
   else
     review_exit=$?
