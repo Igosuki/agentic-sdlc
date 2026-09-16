@@ -23,7 +23,8 @@ DESCRIPTION = """Lists dispatched tasks that aren't closed, with where their wor
 
 Options:
   --under ID      only tasks under that id, at any depth; repeatable
-  --alive-count   print only the number of live workers on this machine
+  --alive-count   print only the number of dispatched tasks with a live worker,
+                  whatever their status
 
 Exit codes: 0 listed, 2 invalid arguments."""
 
@@ -214,7 +215,7 @@ def print_crashed(task, host, title, log_path, wt_path, base, now):
     print(f"  machine booted: {soft_capture(['uptime', '-s']) or 'unknown'}")
 
 
-def print_task(task, logs_directory, worktree_paths, now):
+def print_task(task, logs_directory, worktree_paths, now, lines):
     metadata = task.get("metadata") or {}
     tid = task["id"]
     branch = metadata.get("dispatch_branch", "")
@@ -224,7 +225,7 @@ def print_task(task, logs_directory, worktree_paths, now):
     log_path = os.path.join(logs_directory, f'{tid}-{metadata.get("dispatch_session", "")}.jsonl')
     wt_path = worktree_paths.get(branch)
 
-    if tasks.worker_running(task):
+    if tasks.worker_running(task, lines):
         started = mtime_ago(log_path + ".wt", now)
         output = mtime_ago(log_path, now)
         print(f'{tid}  running  on {host}  started {started or "?"} ago  last output {output or "never"} ago  "{title}"')
@@ -270,7 +271,11 @@ def main(argv=None):
         dispatched = [t for t in dispatched if tasks.under(by_id, t["id"], args.under_ids)]
 
     if args.alive_count:
-        print(sum(1 for t in dispatched if tasks.worker_running(t)))
+        claimed = [t for t in all_tasks if (t.get("metadata") or {}).get("dispatch_session")]
+        if args.under_ids:
+            claimed = [t for t in claimed if tasks.under(by_id, t["id"], args.under_ids)]
+        lines = tasks.pgrep_lines()
+        print(sum(1 for t in claimed if tasks.worker_running(t, lines)))
         return 0
 
     if not dispatched:
@@ -280,8 +285,9 @@ def main(argv=None):
     logs_directory = logs_dir()
     worktree_paths = worktree_paths_by_branch()
     now = time.time()
+    lines = tasks.pgrep_lines()
     for task in dispatched:
-        print_task(task, logs_directory, worktree_paths, now)
+        print_task(task, logs_directory, worktree_paths, now, lines)
     return 0
 
 

@@ -4,6 +4,7 @@ set -euo pipefail
 usage() {
   cat <<'EOF'
 Usage: record-task.sh <task-id>
+       record-task.sh <task-id> --failed REASON
 
 Records a worker's attempt once its process has ended. Run by the wrapper that
 run-task.sh and resume-task.sh start, or by hand if that wrapper died.
@@ -23,13 +24,28 @@ A log without a result means the worker didn't end normally: nothing is
 recorded, and the task stays claimed with no outcome recorded, which shows as
 crashed.
 
-Exit codes: 0 recorded, 1 no result to record, 2 invalid arguments.
+--failed REASON records a crashed worker that won't be resumed: its log has no
+result line, or its worktree or transcript is gone. It sets dispatch_state=failed
+and dispatch_cost, adds REASON as a comment, and creates the closed event bead
+dispatch.failed with REASON as its description. It never removes the worktree.
+It refuses a task that already has an outcome recorded, and refuses when the
+log has a result (use record-task.sh without --failed for that).
+
+Exit codes: 0 recorded, 1 no result to record, 2 invalid arguments or refused.
 EOF
 }
 
 [[ "${1:-}" == -h || "${1:-}" == --help ]] && { usage; exit 0; }
-[[ $# -eq 1 && "$1" != -* ]] || { usage >&2; exit 2; }
-id="$1"
+if [[ $# -eq 1 && "$1" != -* ]]; then
+  id="$1"
+  failed=""
+elif [[ $# -eq 3 && "$1" != -* && "$2" == --failed && -n "$3" ]]; then
+  id="$1"
+  failed="$3"
+else
+  usage >&2
+  exit 2
+fi
 dir=$(dirname "$(readlink -f "$0")")
 
 task=$(bd show "$id" --json 2>/dev/null | jq '.[0]' 2>/dev/null) || { echo "error: no bead $id" >&2; exit 2; }
@@ -42,6 +58,52 @@ agent=$(get .metadata.execution_agent_type)
 log="$(git rev-parse --path-format=absolute --git-common-dir)/sdlc/logs/$id-$session.jsonl"
 # A worker killed mid-write leaves a truncated line, so every reader parses line by line.
 results=$(jq -cR 'fromjson? | select(.type == "result")' "$log" 2>/dev/null) || results=""
+
+if [[ -n "$failed" ]]; then
+  existing_state=$(get .metadata.dispatch_state)
+  if [[ -n "$existing_state" && "$existing_state" != running ]]; then
+    echo "error: $id already has an outcome recorded (dispatch_state=$existing_state)" >&2
+    exit 2
+  fi
+  [[ -z "$results" ]] || { echo "the log has a result: run record-task.sh without --failed" >&2; exit 2; }
+
+  if [[ -f "$log" ]]; then
+    read -r cost turns seconds < <("$dir/tasks.py" log-totals "$log")
+    agents=$( { [[ -z "$agent" ]] || echo "$agent"
+      jq -rR 'fromjson? | select(.type == "assistant") | .message.content[]?
+        | select(.type == "tool_use" and (.name == "Agent" or .name == "Task"))
+        | .input.subagent_type // "general-purpose"' "$log" 2>/dev/null; } | sort -u | paste -sd, -)
+  else
+    cost=0
+    turns=0
+    seconds=0
+    agents="$agent"
+  fi
+  models=""
+
+  state=failed
+  meta=(--set-metadata "dispatch_state=$state" --set-metadata "dispatch_cost=$cost")
+  [[ -z "$agents" ]] || meta+=(--set-metadata "dispatch_agents=$agents")
+  bd update "$id" "${meta[@]}" >/dev/null
+  bd comments add "$id" "$failed" >/dev/null
+
+  payload=$(jq -cn --arg session "$session" --arg agents "$agents" \
+    --argjson cost "$cost" --argjson turns "$turns" --argjson seconds "$seconds" \
+    --arg branch "$branch" --arg base "$(get .metadata.dispatch_base)" --arg host "$(get .metadata.dispatch_host)" \
+    --arg log "$log" \
+    '{session: $session, agents: ($agents | split(",")), cost_usd: $cost, turns: $turns,
+      duration_s: $seconds, branch: $branch, base: $base, host: $host, result: "crashed", log: $log}
+     | with_entries(select(.value != "" and .value != []))')
+  event=$(bd create "$id $state" --type event --event-target "$id" --event-category "dispatch.$state" \
+    --event-actor "${agents:-worker}" --event-payload "$payload" \
+    --description "$failed" --silent)
+  bd close "$event" >/dev/null
+
+  LC_NUMERIC=C printf '%s %s · $%.2f · %dm%02ds · %s · event %s\n' "$state" "$id" "$cost" \
+    $((seconds / 60)) $((seconds % 60)) "${agents:-no model}" "$event"
+  exit 0
+fi
+
 [[ -n "$results" ]] || { echo "no result for $id in $log: the worker didn't end normally"; exit 1; }
 last=$(tail -1 <<<"$results")
 

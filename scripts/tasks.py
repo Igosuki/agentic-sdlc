@@ -117,28 +117,34 @@ def dispatch_order(all_tasks, ready_tasks, under_ids=None):
     return [{"task": t, "epic": e, "epic_started": s} for _, t, e, s in entries]
 
 
-def _process_alive(task_id, session):
-    # ignores --fork-session: a user inspecting the transcript, not the worker.
-    pattern = rf"(run-task\.sh {re.escape(task_id)}\b|--(session-id|resume) {re.escape(session)}\b)"
+_PGREP_PATTERN = r"run-task\.sh |--session-id |--resume "
+
+
+def pgrep_lines():
     try:
-        out = subprocess.run(["pgrep", "-af", pattern], capture_output=True, text=True)
+        out = subprocess.run(["pgrep", "-af", _PGREP_PATTERN], capture_output=True, text=True)
     except FileNotFoundError:
-        return False
-    return any("--fork-session" not in line for line in out.stdout.splitlines())
+        return []
+    return out.stdout.splitlines()
 
 
-def worker_running(task):
-    """Claimed, a process exists, and no attempt outcome is recorded yet."""
-    if task.get("status") != "in_progress":
-        return False
+def worker_running(task, lines=None):
+    """Status and dispatch_state are ignored: finish-task.sh closes a task while its worker still runs.
+    lines: pgrep_lines(), shared when checking many tasks; fetched when omitted.
+    A --fork-session line is a person inspecting the transcript, not the worker."""
     metadata = task.get("metadata") or {}
     session = metadata.get("dispatch_session")
     if not session:
         return False
-    state = metadata.get("dispatch_state") or ""
-    if state not in ("", "running"):  # a bead written before dispatch_state existed can still hold "running"
-        return False
-    return _process_alive(task.get("id"), session)
+    if lines is None:
+        lines = pgrep_lines()
+    task_id = task.get("id") or ""
+    run_re = re.compile(rf"run-task\.sh {re.escape(task_id)}\b")
+    session_re = re.compile(rf"--(session-id|resume) {re.escape(session)}\b")
+    return any(
+        "--fork-session" not in line and (run_re.search(line) or session_re.search(line))
+        for line in lines
+    )
 
 
 def log_totals(path):

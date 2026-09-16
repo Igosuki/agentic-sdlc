@@ -62,6 +62,14 @@ class TestWorkers(BdRepoTestCase):
         self.assertIn(f"{task}  running  on myhost", result.stdout)
         self.assertEqual(self.workers("--alive-count").stdout.strip(), "1")
 
+    def test_alive_count_counts_closed_task_with_live_process(self):
+        task = self.create("create", "--title", "Task", "--type", "task", "--metadata", '{"verify": "true"}')
+        self.claim(task, "session-g", host="myhost")
+        self.spawn("run-task.sh", task)
+        self.bd("close", task)
+
+        self.assertEqual(self.workers("--alive-count").stdout.strip(), "1")
+
     def test_crashed_task_shows_evidence(self):
         task = self.create("create", "--title", "Task", "--type", "task", "--metadata", '{"verify": "true"}')
         self.claim(task, "no-such-session", host="myhost", base="main", branch=task)

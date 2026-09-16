@@ -311,13 +311,19 @@ class TestWorkerRunning(BdRepoTestCase):
         self.spawn("--resume", "session-c", "--fork-session")
         self.assertFalse(tasks.worker_running(self.get_task()))
 
-    def test_recorded_outcome_is_not_running_even_if_process_alive(self):
-        self.claim("session-d", state="failed")
+    def test_closed_task_with_live_process_is_running(self):
+        self.claim("session-d")
         self.spawn("run-task.sh", self.task)
-        self.assertFalse(tasks.worker_running(self.get_task()))
+        self.bd("close", self.task)
+        self.assertTrue(tasks.worker_running(self.get_task()))
+
+    def test_dispatch_state_set_with_live_process_is_running(self):
+        self.claim("session-e", state="failed")
+        self.spawn("run-task.sh", self.task)
+        self.assertTrue(tasks.worker_running(self.get_task()))
 
     def test_cli(self):
-        self.claim("session-e")
+        self.claim("session-f")
         self.spawn("run-task.sh", self.task)
         result = self.tasks_py("worker", self.task, stdin_json=self.all_tasks())
         self.assertEqual(result.stdout.strip(), "true")
