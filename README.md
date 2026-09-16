@@ -22,8 +22,8 @@ flowchart LR
 ## For projects that last
 
 A one-off request and a long-running project go through the same flow. What carries a project over time:
-- **Work outlives sessions.** Designs are documents in the repository, and tasks, dependencies and progress are beads. Close Claude Code, reboot, or come back a week later: `/sdlc:dispatch` sees what is ready, what is running and what stopped, and carries on.
-- **New work builds on old work.** `design` reads earlier design documents and existing beads as prior art, and says whether the new design reuses, extends or replaces them. `split` links new tasks to the ones they depend on.
+- **Work outlives sessions.** Tasks, dependencies and progress are beads. Close Claude Code, reboot, or come back a week later: `/sdlc:dispatch` sees what is ready, what is running and what stopped, and carries on.
+- **New work builds on old work.** `design` reads earlier designs and existing beads as prior art, and says whether the new design reuses, extends or replaces them. `split` links new tasks to the ones they depend on.
 - **Work can be added at any time.** A new epic with `/sdlc:build`, one task with `/sdlc:create-task`, a finer split of an existing bead with `/sdlc:split`, or a bead created by hand: the queue takes it in.
 - **Progress stays focused.** Epics already in progress go first, so started work gets finished before new work starts.
 - **The history accumulates.** Every worker attempt stays on its task, with session, model, agents, cost and outcome. `/sdlc:stats` sums it per epic, and `/sdlc:logs` shows what each attempt did.
@@ -31,7 +31,7 @@ A one-off request and a long-running project go through the same flow. What carr
 
 ## Features
 
-- **Design before code.** `design` finds prior art (docs, code, existing beads, and connected sources with your permission), removes ambiguity, and writes a design document.
+- **Design before code.** `design` finds prior art (docs, code, existing beads, and connected sources with your permission), removes ambiguity, and states the design in the session, editing existing docs wherever the design makes them wrong or incomplete.
 - **Task graphs with real checks.** `split` turns a design, a plan or a prompt into beads tasks. Each task has acceptance criteria, a path scope, dependencies, and a verify command that exercises the behaviour.
 - **One task, one worktree, one session.** `dispatch` starts a headless Claude Code session per task, in its own worktree. That worker implements the task, delegating to your installed agents when your configuration says so, then merges and closes it.
 - **Merges that can't skip the checks.** Workers merge through `finish-task.sh`. While holding the branch's merge queue, it rebases, runs the verify command, runs the project's own `[pre-merge]` checks (type check, lint, tests, from `.config/wt.toml`) and merges. When that fails, the worker, which has the task's context, fixes it.
@@ -92,14 +92,14 @@ The whole workflow in one command:
 /sdlc:build add a page that lists the latest orders
 ```
 
-1. `build` enters plan mode, writes the design into the plan, and asks for your approval.
-2. It then writes and commits the design document, splits it into tasks and asks you to approve them, and dispatches.
+1. `build` enters plan mode, states the design and the doc edits in the plan, and asks for your approval.
+2. It then applies the doc edits and commits them if anything changed, splits the plan into tasks and asks you to approve them, and dispatches.
 
 Step by step:
 
 ```text
 /sdlc:design add a page that lists the latest orders
-/sdlc:split docs/design/latest-orders-page.md
+/sdlc:split
 /sdlc:dispatch
 ```
 
@@ -112,7 +112,7 @@ After a restart, or to pick up work in progress, run `/sdlc:dispatch` again.
 | `/sdlc:setup` | Checks this machine for the tools sdlc needs, and recommends companions (rtk, reviewer and specialist agents) |
 | `/sdlc:init` | Prepares a project: beads, integration mode, target branch, `.claude/sdlc.local.md`, `.gitignore` |
 | `/sdlc:build <request>` | Runs design in plan mode for your approval, then splits it into tasks for your approval, and dispatches them |
-| `/sdlc:design <request>` | Finds prior art, clears up ambiguity, and writes a design document |
+| `/sdlc:design <request>` | Finds prior art, clears up ambiguity, and states the design in the session, editing existing docs where they're now wrong or incomplete |
 | `/sdlc:split [docs] [prompt \| bead-id]` | Splits a design, a plan-mode plan or a prompt into a beads task graph, or an existing bead into child tasks |
 | `/sdlc:create-task <request>` | Creates a single task that dispatch can run |
 | `/sdlc:dispatch [epic]` | Supervises the work: starts workers in work order, follows them, and resumes crashed ones |
@@ -129,7 +129,6 @@ Per project and per machine, in `.claude/sdlc.local.md`:
 ```markdown
 ---
 parallel: 3          # workers at a time on this machine (default 2)
-design_dir: docs/specs
 workflow: build      # route new work to /sdlc:build automatically
 ---
 ```

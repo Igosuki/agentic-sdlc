@@ -1,6 +1,6 @@
 ---
 name: split
-description: Split work into a beads task graph, with acceptance criteria, scope and a verify command on each task. Takes design docs (for example from sdlc:design), a plan made in plan mode, a plain prompt, or an existing bead (task or epic) that is too large or was created without a breakdown. Use whenever work needs to become, or be broken further into, beads tasks.
+description: Split work into a beads task graph, with acceptance criteria, scope and a verify command on each task. Takes design docs, a design or plan stated earlier in the conversation (for example by sdlc:design or plan mode), a plain prompt, or an existing bead (task or epic) that is too large or was created without a breakdown. Use whenever work needs to become, or be broken further into, beads tasks.
 argument-hint: "[doc paths... | bead-id] [prompt or instructions]"
 model: opus
 allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/create-task.sh *), Bash(bd *), Bash(wt remove *), Read(/${CLAUDE_SKILL_DIR}/references/**)
@@ -27,7 +27,7 @@ Splitting doesn't implement anything: don't write code, build prototypes or run 
 Split the first of these that applies. The rest of the arguments are instructions for the split.
 1. **A bead id.** Run `bd show <id> --json`. If the bead is closed, or has children that aren't closed, stop and say so.
 2. **Markdown docs:** designs, specs or any `.md` file.
-3. **A plan made in plan mode** earlier in this conversation.
+3. **A design or plan earlier in this conversation**, from `sdlc:design` or plan mode.
 4. **The arguments as a plain prompt.**
 
 If none applies, ask what to split.
@@ -63,7 +63,7 @@ Follow `references/task-rules.md` for graph shape, sizing, granularity, review l
 
 **Stopped or failed bead:** resetting it deletes its branch, so the children redo that work. Write what was tried and why it stopped into the descriptions of the children it concerns.
 
-**Uncommitted sources:** a document that isn't committed on the target branch, or a plan from plan mode, is invisible to workers, who branch from committed code. Copy the facts each task needs into its description, the same way you copy facts from prior art that lives outside the repository.
+**Uncommitted sources:** a document that isn't committed on the target branch, or a design or plan stated in this conversation, is invisible to workers, who branch from committed code. Copy the facts each task needs into its description, the same way you copy facts from prior art that lives outside the repository.
 
 Create each bead in dependency order, running the script with the path exactly as written. Use single quotes, and write an apostrophe as `'\''`:
 
@@ -76,6 +76,8 @@ ${CLAUDE_PLUGIN_ROOT}/scripts/create-task.sh --title '<title>' --description '<d
 ```
 
 Set `--agent`, `--model` or `--effort` only when a task clearly needs a particular installed agent, model or effort. Otherwise the worker and the user's configuration decide.
+
+Set `--design` only when a committed document on the target branch covers the task. A design or plan stated only in this conversation isn't a `--design` document: copy its facts into the description instead (see Uncommitted sources above).
 
 Use `bd` directly for anything the script doesn't cover. Review the boundaries, and decompose further where needed.
 
@@ -100,7 +102,7 @@ Fix what it reports about beads you created, with the script or `bd`. Report any
 Show the graph: `bd list --parent <id> --pretty` for each top-level bead you created, or for the bead you split, plus the dependencies from `create-task.sh`'s `created <id> ... after <ids>` lines. Then report:
 - any requirement or acceptance check that no task covers, and why
 - the assumptions and conflicts you wrote down, and that `/sdlc:design` could settle them
-- any `--design` document or other source you copied facts from that isn't committed on the target branch: it needs a commit before `/sdlc:dispatch`
+- any source you copied facts from instead of setting `--design`, because it isn't committed on the target branch: it needs a commit before `/sdlc:dispatch`
 
 **If you can ask the user:** ask for approval with AskUserQuestion. Apply any requested changes with `create-task.sh` or `bd`, and validate again. Once the graph is approved, if the bead you split was stopped or failed, ask whether to reset it:
 1. `wt remove -D <metadata.dispatch_branch>`

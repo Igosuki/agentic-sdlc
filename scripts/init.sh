@@ -3,7 +3,7 @@ set -euo pipefail
 
 usage() {
   cat <<'EOF2'
-Usage: init.sh [--integration MODE] [--target BRANCH] [--parallel N] [--design-dir DIR]
+Usage: init.sh [--integration MODE] [--target BRANCH] [--parallel N]
                 [--workflow build|none] [--pre-merge NAME=COMMAND]...
 
 Prepares the current git repository for sdlc. Safe to run again: it fills in
@@ -12,7 +12,7 @@ what is missing, and changes a setting only when an option asks for it.
   1. beads: bd init (non-interactive, no git hooks, no AGENTS.md) if there is no beads database
   2. beads config: custom.dispatch.integration (direct, epic-merge or epic-pr; default direct)
      and custom.dispatch.target (default: the current branch)
-  3. .claude/sdlc.local.md: parallel (default 2), design_dir and workflow when given
+  3. .claude/sdlc.local.md: parallel (default 2) and workflow when given
   4. .gitignore: .claude/*.local.md and .worktrees/
   5. .config/wt.toml: adds NAME=COMMAND under [pre-merge] for each --pre-merge, without
      touching a key that is already there
@@ -23,16 +23,16 @@ detached HEAD, or a repository with no commits.
 EOF2
 }
 
-integration="" target="" parallel="" design_dir="" workflow=""
+integration="" target="" parallel="" workflow=""
 pre_merge=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -h|--help) usage; exit 0 ;;
-    --integration|--target|--parallel|--design-dir|--workflow|--pre-merge)
+    --integration|--target|--parallel|--workflow|--pre-merge)
       [[ $# -ge 2 ]] || { echo "error: $1 needs a value" >&2; usage >&2; exit 2; }
       case "$1" in
         --integration) integration="$2" ;; --target) target="$2" ;; --parallel) parallel="$2" ;;
-        --design-dir) design_dir="$2" ;; --workflow) workflow="$2" ;;
+        --workflow) workflow="$2" ;;
         --pre-merge) pre_merge+=("$2") ;;
       esac
       shift ;;
@@ -87,7 +87,7 @@ done
 settings=.claude/sdlc.local.md
 mkdir -p .claude
 if [[ ! -f "$settings" ]]; then
-  printf -- '---\nparallel: %s\n---\n\nsdlc settings for this machine. Keys: parallel, design_dir, workflow (build).\n' "${parallel:-2}" > "$settings"
+  printf -- '---\nparallel: %s\n---\n\nsdlc settings for this machine. Keys: parallel, workflow (build).\n' "${parallel:-2}" > "$settings"
   echo "created $settings (parallel: ${parallel:-2})"
 fi
 set_key() { # key value; value "none" removes the key
@@ -108,7 +108,6 @@ set_key() { # key value; value "none" removes the key
   echo "set $key: $value in $settings"
 }
 [[ -z "$parallel" ]] || set_key parallel "$parallel"
-[[ -z "$design_dir" ]] || set_key design_dir "$design_dir"
 [[ -z "$workflow" ]] || set_key workflow "$workflow"
 
 touch .gitignore

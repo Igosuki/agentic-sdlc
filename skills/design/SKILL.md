@@ -1,17 +1,17 @@
 ---
 name: design
-description: Turn a product or feature request into a design document that removes ambiguity and fixes contracts, grounded in prior art from the repository, existing beads and (with the user's permission) connected sources such as wikis, Notion or Drive. Output is ready for sdlc:split. Use when starting new work from an idea, before any tasks exist.
+description: State a design for a product or feature request in the session, removing ambiguity and fixing the contracts that separate pieces of work must agree on, grounded in prior art from the repository, existing beads and (with the user's permission) connected sources such as wikis, Notion or Drive. Edits existing docs where the design makes them wrong or incomplete; writes a new document only if asked. Follow with sdlc:split in the same session. Use when starting new work from an idea, before any tasks exist.
 argument-hint: "<what to build>"
 model: opus
 effort: high
-allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/settings.sh *), Bash(bd *)
+allowed-tools: Bash(bd *)
 ---
 
 # Design
 
 Request: $ARGUMENTS
 
-Produce a design document for this request. The document's job is to remove ambiguity and fix the contracts that separate pieces of work must agree on. It is not an implementation plan: tasks, file-by-file steps and code belong to `sdlc:split`.
+State the design for this request. Its job is to remove ambiguity and fix the contracts that separate pieces of work must agree on. It is not an implementation plan: tasks, file-by-file steps and code belong to `sdlc:split`.
 
 Be precise only where two people implementing different parts could otherwise build incompatible things, or where the goal itself is unclear.
 
@@ -61,15 +61,9 @@ List the open points whose answer would change a contract, a goal or the scope. 
 - If you can ask the user, use AskUserQuestion: concrete options, recommended option first, at most 4 questions per round and 2 rounds.
 - If you cannot ask (headless session, or the tool is unavailable), choose the most reasonable option and record it as an assumption.
 
-## 3. Write the document
+## 3. State the design
 
-**Where to write:**
-1. the location the request asks for; otherwise
-2. the configured design directory, unless this is blank: !`${CLAUDE_PLUGIN_ROOT}/scripts/settings.sh design_dir 2>&1 || true`; otherwise
-3. the repository's existing design-doc convention; otherwise
-4. `docs/design/<slug>.md`.
-
-The slug is short kebab-case derived from the request. If a design on the same topic already exists, update it instead of creating a second one.
+State the design directly in your reply, in this form:
 
 ```markdown
 # <Title>
@@ -101,15 +95,20 @@ Each choice, the alternatives rejected, and why.
 - Contracts that already exist in prior art are referenced, not restated.
 - When this design changes something an earlier design defined, say so explicitly and name the earlier design.
 
+**Doc edits:** list the changes existing files need because this design makes them wrong or incomplete — a README, an ADR, API docs, an earlier design. Each entry: the file, and what changes. Make the edits. This is the only side effect.
+
+**A new document, only if the user asks for one:** write it to the location the request names; otherwise the repository's existing design-doc convention; otherwise `docs/design/<slug>.md`. The slug is short kebab-case derived from the request. If a design on the same topic already exists, update it instead of creating a second one.
+
 ## 4. Report
 
 Print:
-- the document path
 - a summary of at most three lines
 - the assumptions you made
+- the doc edits made, or that none were needed
+- the new document's path, if the user asked for one
 
-Then suggest `/sdlc:split <document path>` as the next step.
+Then suggest `/sdlc:split` in the same session as the next step.
 
 Do not create beads, branches or commits.
 
-If plan mode is active, put the complete document in the plan file, and write it to its location once plan mode ends.
+If plan mode is active, put the complete design — the stated design and the doc edits — in the plan file, and apply the doc edits (and write a new document, if asked for) once plan mode ends.

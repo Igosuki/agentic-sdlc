@@ -1,7 +1,7 @@
 ---
 name: init
 description: Prepare the current project for sdlc. Initializes beads, sets the integration mode and target branch, creates .claude/sdlc.local.md, and ignores local files. Safe to run again. Use in a project before its first design or dispatch, or to change these settings.
-argument-hint: "[--integration direct|epic-merge|epic-pr] [--target BRANCH] [--parallel N] [--design-dir DIR] [--workflow build|none]"
+argument-hint: "[--integration direct|epic-merge|epic-pr] [--target BRANCH] [--parallel N] [--workflow build|none]"
 disable-model-invocation: true
 model: sonnet
 allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/init.sh *), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/checks.sh *), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/settings.sh *), Bash(bd config get custom.dispatch.integration *), Bash(bd config get custom.dispatch.target *), Bash(git branch --show-current *), Bash(git status --porcelain -- .gitignore .beads), Bash(git add -- .gitignore .beads), Bash(git commit -m "Ignore sdlc local files" -- .gitignore .beads)
@@ -43,7 +43,7 @@ Ask with AskUserQuestion (multiSelect) which of the proposed checks to add as pr
 
 ## 3. Run
 
-Run `${CLAUDE_PLUGIN_ROOT}/scripts/init.sh` with only the options settled in step 1 — a setting nobody chose to change gets no flag — plus `--parallel` and `--design-dir` from `$ARGUMENTS` when given, plus `--pre-merge NAME=COMMAND` for each check chosen in step 2, and show its output.
+Run `${CLAUDE_PLUGIN_ROOT}/scripts/init.sh` with only the options settled in step 1 — a setting nobody chose to change gets no flag — plus `--parallel` from `$ARGUMENTS` when given, plus `--pre-merge NAME=COMMAND` for each check chosen in step 2, and show its output.
 
 ## 4. Commit
 

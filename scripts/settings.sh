@@ -9,8 +9,6 @@ Prints the dispatch settings as "key=value" lines, or the value of one key.
 
   parallel     workers at a time on this machine, from the frontmatter of
                .claude/sdlc.local.md in the main checkout (default 2)
-  design_dir   where sdlc:design writes documents, from the same frontmatter (no default:
-               the design skill falls back to the repository's convention, then docs/design)
   workflow     "build" routes new work in this project to sdlc:build (SessionStart hook);
                from the same frontmatter, no default
   integration  direct, epic-merge or epic-pr, from bd config custom.dispatch.integration (default direct)
@@ -21,7 +19,6 @@ Prints the dispatch settings as "key=value" lines, or the value of one key.
 Example .claude/sdlc.local.md:
   ---
   parallel: 3
-  design_dir: docs/specs
   workflow: build
   ---
 
@@ -53,7 +50,6 @@ value_for() {
   local v
   case "$1" in
     parallel)    v=$(local_setting parallel); echo "${v:-2}" ;;
-    design_dir)  local_setting design_dir ;;
     workflow)    local_setting workflow ;;
     integration) v=$(bd_setting integration); echo "${v:-direct}" ;;
     target)      v=$(bd_setting target); echo "${v:-main}" ;;
@@ -63,7 +59,7 @@ value_for() {
 }
 
 if [[ $# -eq 0 ]]; then
-  for key in parallel design_dir workflow integration target review; do
+  for key in parallel workflow integration target review; do
     echo "$key=$(value_for "$key")"
   done
 elif v=$(value_for "$1" 2>/dev/null); then

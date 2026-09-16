@@ -4,7 +4,7 @@ sdlc moves a request through three phases. Each phase is a skill, so you can run
 
 ```mermaid
 flowchart TD
-  A[Request] --> B[design: prior art, questions, design document]
+  A[Request] --> B[design: prior art, questions, design]
   B --> C[split: task graph in beads]
   C --> D[dispatch: supervisor]
   D -->|work order, parallel limit| E[run-task.sh: claim, worktree, start-worker.sh]
@@ -17,19 +17,19 @@ flowchart TD
 
 ## 1. Design
 
-`/sdlc:design <request>` writes a design document. Its job is to remove ambiguity and fix the contracts that separate pieces of work must agree on. Implementation steps are left to the split.
+`/sdlc:design <request>` states a design in the session. Its job is to remove ambiguity and fix the contracts that separate pieces of work must agree on. Implementation steps are left to the split.
 
 - **Prior art:**
   - **local sources, always used:** earlier designs, docs, code, and existing beads
   - **external sources:** MCP servers such as a wiki, Notion or Drive, skills, and web search. It asks before using them, or uses what the request needs in a headless session.
 - **Questions:** it asks only where the answer changes a contract, a goal or the scope. In a headless session it records assumptions instead.
-- **Output:** a document. Where it's written, in order: the location the request names, then `design_dir`, then the repository's existing convention, then `docs/design/<slug>.md`. It contains a prior-art section, open questions and assumptions, and whichever of goals, definition of done, glossary, contracts and decisions the request needs.
+- **Output:** the design, stated in the reply (or in the plan file, in plan mode): a prior-art section, open questions and assumptions, and whichever of goals, definition of done, glossary, contracts and decisions the request needs. It also edits existing docs — a README, an ADR, API docs, an earlier design — wherever this design makes them wrong or incomplete. It writes a new document only when the user asks for one, at the location the request names, then the repository's existing convention, then `docs/design/<slug>.md`.
 
 Reading is delegated to the `sdlc:reader` agent. The planning skills run on Opus and only think about what comes back.
 
 ## 2. Split
 
-`/sdlc:split [docs] [prompt]` turns a design document, a plan made in plan mode, or a plain prompt into a beads task graph. The agent decides its shape: one or several epics, tasks, subtasks. Each task gets:
+`/sdlc:split [docs] [prompt]` turns design docs, a design or plan stated earlier in the conversation, or a plain prompt into a beads task graph. The agent decides its shape: one or several epics, tasks, subtasks. Each task gets:
 - a description, and acceptance criteria
 - a **scope**: the path prefixes it changes. Tasks that don't wait for each other don't share paths.
 - a **verify command**: one short command that exits 0 when the acceptance is met. It must exercise the behaviour, so a syntax check alone doesn't count, and it may only rely on files that exist once the task's dependencies are done.

@@ -9,7 +9,6 @@ YAML frontmatter in the main checkout. It is personal, so keep it out of git.
 ```markdown
 ---
 parallel: 3
-design_dir: docs/specs
 workflow: build
 ---
 ```
@@ -17,7 +16,6 @@ workflow: build
 | Key | Default | Meaning |
 |---|---|---|
 | `parallel` | `2` | workers running at a time on this machine |
-| `design_dir` | none | where `/sdlc:design` writes documents, when the request doesn't name a location. Order: the location the request names, then `design_dir`, then the repository's convention, then `docs/design` |
 | `workflow` | none | `build`: a SessionStart hook tells new sessions in this project to start new work with `/sdlc:build` |
 
 `scripts/settings.sh` prints the effective values. `/sdlc:status` shows them.
