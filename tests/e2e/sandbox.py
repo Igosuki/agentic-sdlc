@@ -16,6 +16,20 @@ RECORD_TASK_SH = os.path.join(SCRIPTS_DIR, "record-task.sh")
 
 STATES = ("stopped", "failed", "awaiting-review", "running", "closed")
 
+DEFAULT_GITIGNORE = """__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+*.egg-info/
+build/
+dist/
+.mypy_cache/
+.ruff_cache/
+node_modules/
+coverage/
+"""
+
 
 @dataclass
 class Project:
@@ -63,6 +77,8 @@ def new_project(name, integration="epic-merge", files=None, init=True):
     _run(repo, "git", "init", "-q", "-b", "main")
     with open(os.path.join(repo, "README.md"), "w") as f:
         f.write(f"# {name}\n")
+    with open(os.path.join(repo, ".gitignore"), "w") as f:
+        f.write(DEFAULT_GITIGNORE)
     for relpath, content in (files or {}).items():
         full = os.path.join(repo, relpath)
         os.makedirs(os.path.dirname(full), exist_ok=True)
@@ -145,7 +161,9 @@ def dispatched(project, task_id, state, *, session=None, host="e2e-sandbox", bas
                 branch=None, commits=None, gate=None, summary=None):
     """Leaves task_id the way a worker would after ending in `state`: claimed, with a
     worktree and branch, a worker log at .git/sdlc/logs/<task>-<session>.jsonl, and (for
-    every state but running) a recorded attempt from record-task.sh.
+    every state but running and closed) a recorded attempt from record-task.sh. For
+    "closed", the task is closed directly, as if record-task.sh crashed before running,
+    leaving the worktree and branch behind for clean.sh to find.
 
     commits: a list of {relpath: content}, one dict per commit, applied in the worktree.
     gate: for awaiting-review, whether to open a human review gate (default: yes).
@@ -200,16 +218,13 @@ def dispatched(project, task_id, state, *, session=None, host="e2e-sandbox", bas
             gate_id = created_gate["id"]
             _run(project.repo, "bd", "update", task_id, "--set-metadata", f"dispatch_review_gate={gate_id}")
 
-    if state == "closed":
-        # An untracked file left in the worktree is what makes record-task.sh's own
-        # `wt remove` fail, so the worktree and branch stay behind (clean.sh's leftover).
-        with open(os.path.join(wt_path, "leftover.txt"), "w") as f:
-            f.write("uncommitted\n")
-
     _write_log(log_path, [_dispatch_run_line(), _result_line(state == "failed", summary or state)])
 
     if state == "closed":
         _run(project.repo, "bd", "close", task_id)
+        # The worker merged and the task closed, but record-task.sh never ran (a crash
+        # between merge and record), so the worktree and branch stay behind uncleaned.
+        return Dispatched(task=task_id, session=session, branch=branch, base=base, log=log_path, gate=gate_id)
 
     _run(project.repo, RECORD_TASK_SH, task_id)
 
