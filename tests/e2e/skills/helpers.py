@@ -67,6 +67,21 @@ def git_log_subjects(repo):
     return result.stdout.splitlines()
 
 
+def worktree_branches(repo):
+    result = subprocess.run(["wt", "list", "--format", "json"], cwd=repo, capture_output=True, text=True)
+    if result.returncode != 0:
+        raise AssertionError(f"wt list failed: {result.stderr}")
+    items = json.loads(result.stdout or "{}").get("items", [])
+    return {i["branch"] for i in items}
+
+
+def branch_exists(repo, branch):
+    result = subprocess.run(
+        ["git", "rev-parse", "--verify", "--quiet", f"refs/heads/{branch}"], cwd=repo, capture_output=True, text=True
+    )
+    return result.returncode == 0
+
+
 
 def transcript_events(logfile):
     # Replays the raw transcript to recover the order of questions vs. tool calls:
