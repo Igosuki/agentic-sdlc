@@ -232,7 +232,8 @@ class Session:
                     self.cost_usd = msg.get("total_cost_usd", self.cost_usd)
                     self.turns = msg.get("num_turns", self.turns)
                     self.is_error = msg.get("is_error", self.is_error)
-                    if until is None and not running_tasks and stdin_open:
+                    # Only a background task can wake the session again, so an idle one is done even if until() isn't.
+                    if not running_tasks and stdin_open:
                         stop(kill_the_supervisor=False)
 
             try:
