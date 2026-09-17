@@ -13,7 +13,7 @@ skills/
   design/              design documents
   split/               task graphs, from a doc, a plan, a prompt or an existing bead
   build/, dispatch/, create-task/,
-  setup/, init/, status/, stats/, logs/
+  setup/, init/, hooks/, status/, stats/, logs/
                         entry points, one SKILL.md each
 tests/wild/            end-to-end runs in a sandbox
 docs/                  this documentation
@@ -42,3 +42,19 @@ SDLC_INTEGRATION=direct tests/wild/dispatch.sh "create a todo list web app"
 Both write per-step transcripts and a `summary.md` with costs. The output isn't deterministic: the point is to watch the plugin work on a real sequence.
 
 To try the plugin by hand, start a session in a sandbox project with `claude --plugin-dir /path/to/claude-sdlc`.
+
+
+## Iterating on the plugin
+
+I advise testing plugin changes on a completely separate empty test repository.
+Once the repo is created and you have used some skills (setup, init, build or design) and you would like to test plugin changes, ideally you should fork both the repository and the claude chat.
+
+First, create a new worktree : 
+```sh
+   git worktree add .claude/worktrees/plugin-test-1 -b plugin-test-1
+```
+
+Then, resume the claude session :
+```sh
+   claude --resume <session-id> --fork-session --plugin-dir <path-to-sdlc-plugin-dir> "Enter the worktree plugin-test-1 at .claude/worktrees/plugin-test-1"
+```
