@@ -50,20 +50,22 @@ bd update <task> --set-metadata execution_reasoning_effort=high
 
 Or at creation, with `create-task.sh --agent --model --effort`. Without hints, the worker is a plain Sonnet session, and your own configuration (`CLAUDE.md`, installed agents) decides whether it delegates.
 
-## Project checks: `.config/wt.toml`
+## Project hooks: `.config/wt.toml`
 
-The project's own checks run as `wt` pre-merge hooks, so they gate every merge the same way regardless of who or what runs it:
+Hooks are optional: sdlc works with none configured. `/sdlc:hooks` reads the project (manifests, lock files, CI, task runners, git hook managers) and proposes `wt` hooks for what sdlc itself triggers — a pre-start hook to install dependencies before a worker starts, and a pre-merge hook for the project's fast checks (type check, lint, unit tests) before a merge lands, so they gate every merge the same way regardless of who or what runs it:
 
 ```toml
+pre-start = "pnpm install --frozen-lockfile"
+
 [pre-merge]
 lint = "npm run lint"
 typecheck = "npm run typecheck"
 test = "npm test"
 ```
 
-`/sdlc:init` proposes these from `skills/init/scripts/print-merge-checks.sh`, which scans the repository (`package.json`, Makefile, justfile, `pyproject.toml`, `Cargo.toml`, `go.mod`) and lists the commands already configured. Adding one by hand: `init.sh --pre-merge lint="npm run lint"` (repeatable; an existing key is kept, not overwritten).
+The project's own git hooks (husky, lefthook, pre-commit, `.git/hooks`) keep running on every worker commit, in every worktree, since workers commit with plain git; `/sdlc:hooks` doesn't touch them. Hand-editing `.config/wt.toml` works too, keeping whichever of `wt`'s hook forms (string, table or pipeline) the hook already uses.
 
-The first time a machine runs one of these commands, `wt` asks for approval; non-interactively (a worker) it fails instead, and `finish-task.sh` reports that a person is needed. A person approves once, in the main checkout:
+The first time a machine runs one of these commands, `wt` asks for approval; non-interactively it fails instead. An unapproved pre-start hook stops a task from starting — `wt switch --create` fails and the supervisor reports the task as not started — and an unapproved pre-merge hook fails the merge, which `finish-task.sh` reports as needing a person. A person approves once, in the main checkout:
 
 ```bash
 wt config approvals add

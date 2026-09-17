@@ -128,9 +128,9 @@ Every branch that tasks merge into has a queue, so merges into it happen one at 
 
 A crash between merge and record, or a task reset by hand, can leave a worktree, a branch, or a held merge queue behind. `/sdlc:clean` (`scripts/clean.sh [--apply]`) lists these, one line per item with its reason, and removes them once you approve. It never touches the main checkout, the worktree of a claimed task, or a task whose `dispatch_state` is `stopped`, `failed` or `awaiting-review`: those still need `/sdlc:recover` or a review.
 
-## Project checks
+## Project hooks
 
-`wt merge` (and, in `epic-pr` mode, `wt hook pre-merge`) runs the project's own `[pre-merge]` commands from `.config/wt.toml` before the merge lands — type checks, linters, unit tests, whatever the project decides. `/sdlc:init` proposes these from `checks.sh`'s scan of the repository (`package.json` scripts, a Makefile or justfile, `pyproject.toml`, `Cargo.toml`, `go.mod`) and adds the ones the user picks.
+`wt merge` (and, in `epic-pr` mode, `wt hook pre-merge`) runs the project's own `[pre-merge]` commands from `.config/wt.toml` before the merge lands — type checks, linters, unit tests, whatever the project decides. Hooks are optional: with none configured, these are no-ops. `/sdlc:hooks` reads the project and proposes hooks for what sdlc triggers (see [configuration](configuration.md#project-hooks-configwttoml)), and adds the ones the user picks.
 
 The first time a command runs on a machine, `wt` needs a person to approve it: `wt merge` fails non-interactively, and `finish-task.sh` treats that as a person-needed problem, not a bug to fix. A person runs `wt config approvals add` once, in the main checkout, and the worker's next `finish-task.sh` run goes through. A failing check, once approved, is a normal problem: the worker fixes it and runs `finish-task.sh` again.
 

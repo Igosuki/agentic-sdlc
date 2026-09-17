@@ -5,9 +5,10 @@ Status: hypothesis. Nothing here is built. This records what it would take to ru
 ## Summary
 
 - Workers share three things with the supervisor through the local disk: the code (worktrees of one repository), the task state (the embedded beads database) and the worker process itself (found with `pgrep`, with a local log and transcript). Each has to move to something reachable over the network: a git remote, a shared Dolt server, and a **runner**, the command that starts one worker somewhere else and returns.
-- Suggested first shape: the same `claude -p` worker in a serverless sandbox that can pause a stopped worker (E2B first, Fly Sprites worth testing), or in GitHub Actions; beads on a shared `dolt sql-server`; GitHub as the remote; merges done by pushing to it. The worker contract, hooks and skills stay as they are.
+- Suggested shape: one central `dolt sql-server` for beads (section 3), GitHub as the remote with merges done by pushing (section 2), and one worker entrypoint, `worker.sh [task]`, that a container boots into (section 11). Start it over SSH with Docker on your own machines; k3s or a sandbox platform such as Daytona or E2B come later (section 4). Nothing is synchronized between machines: the remote and the server are the only shared state (section 10).
+- The skills, hooks and worker contract stay as they are. Only the unattended dispatch loop may later become a Go program (section 9).
 - Claude Code on the web is a poor runner today. Its sandbox sends all traffic through an HTTP/HTTPS proxy, so workers can't reach a Dolt server, and a script has no documented way to learn that a cloud session ended.
-- No open-source project runs headless Claude Code workers across machines yet. Gas Town, built on beads, has an open design issue for it that compares the same options (section 7).
+- No open-source project runs headless Claude Code workers across machines yet. Gas City, the successor of Gas Town, has headless runtimes and a Kubernetes runtime on a shared Dolt server, but no general off-host worker (section 7).
 - Scaling stops well before compute runs out: model rate limits and cost, the number of ready tasks, one verification at a time per merge target, the supervisor's turns, and human review. See section 5.
 
 ## 1. What ties a worker to the supervisor's machine
@@ -49,6 +50,16 @@ Use the shared server. The roadmap's *Several machines* section plans Dolt remot
 - Each worker sets its own `BEADS_ACTOR` (for example the task id), since claims and `bd merge-slot --holder` default to it and every worker would otherwise share one OS user name.
 - Moving this project's embedded database onto a server: `bd backup init <dir>`, `bd backup sync`, `bd init --server`, `bd backup restore --force <dir>`. Back the server up with `bd dolt push` to a Dolt remote; a JSONL export is not a backup.
 - Ports: 3307 by default, 3308 by convention for a shared server; `BEADS_DOLT_MAX_CONNS` sets the connection limit (a sample config uses 100).
+
+**The server is a single point of failure.** It moves one rather than adding one: today the laptop's disk holds the database and every worker. With remote workers, the Dolt server and GitHub are the two central services.
+
+- **During an outage**, workers keep coding, since Claude only reaches `bd` to comment or finish. Everything that calls `bd` fails: claims, heartbeats, the merge queue, closing, recording an attempt. The supervisor sees nothing and dispatches nothing. Code is safe: commits stay in the worker's checkout, and pushing to GitHub doesn't involve Dolt.
+- **The real damage** is a script reading a `bd` error as a task outcome: a failed attempt recorded, a stale heartbeat taken for a crash, a worker told to stop.
+- **Covering it**, cheapest first:
+  1. **Backups:** `bd dolt push` to a Dolt remote (DoltHub, S3, GCS or git) on a timer. Covers losing the disk.
+  2. **Surviving short outages:** scripts retry `bd` with backoff instead of failing the task, the heartbeat grace period outlasts a tolerable outage, and a worker that can't reach `bd` at finish waits rather than giving up.
+  3. **A standby:** Dolt's direct-to-standby replication copies every write to a second server. Failover is manual in every Dolt mode (`CALL dolt_assume_cluster_role(...)` with an epoch), so workers need a name that can be moved to the new primary. Remote-based replication only gives read replicas. Source: dolthub.com/docs/sql-reference/server/replication.
+- A batch workload tolerates minutes of downtime, so 1 and 2 are enough for one person's fleet; 3 is for when others depend on it.
 - The beads docs recommend pinning Dolt to 2.2.0: on 2.3.x, `DOLT_RESET` fails on about 3–5% of new databases.
 - The docs mention `bd sync`; the installed `bd` 1.2.2 has no such command.
 - Where: a small always-on machine that workers reach over a private network (Tailscale, WireGuard) or TLS.
@@ -154,7 +165,7 @@ Each step is usable on its own.
 
 1. **Shared Dolt server**, local workers unchanged. Check what auto-commit being off in server mode does to the scripts, then claims and the merge queue from two machines.
 2. **Merge by pushing**: `finish-task.sh` pushes a fast-forward to `origin`; `run-task.sh` starts from `origin`'s base. Workers still local.
-3. **A `runner` setting**: `local` (today) and one sandbox platform with a worker image, through the four runner verbs. A stopped worker's sandbox is paused and resumed in place.
+3. **A worker entrypoint** (section 11): split `run-task.sh` so local dispatch runs `worker.sh <task>`, then a worker image, then SSH plus Docker as the first remote way to start it.
 4. **Heartbeats** for runners without a local wrapper, then a GitHub Actions runner using a `gh:run` gate and run artifacts.
 5. **At scale**: `watch.sh` handles routine events without Claude; task pull requests go through a merge queue.
 6. **Several repositories**: one supervisor service per repository first; a registry and one loop only when that becomes silly, which is also when the loop stops being a shell script (section 9).
@@ -233,7 +244,70 @@ Keep the skills. Move only the unattended loop into a program, and only when it 
 - **Rewrite the loop when both are true:** more than one repository dispatching at once, and workers on more than one host needing heartbeats. Rewrite the loop only: `watch.sh`, `dispatch-next.sh`, `workers.sh`, the runners and the registry. The skills, hooks and `finish-task.sh` stay as they are, and the binary stays a dispatcher rather than growing roles of its own.
 - **Go rather than Rust**, for the clients this needs: Kubernetes, Docker, SSH and MySQL for Dolt. It also matches beads, Gas City and Dolt, so their code is readable as reference.
 
+## 10. Nothing to synchronize
+
+Nothing is kept in sync continuously. A worker touches shared state at a few points, through two services that already exist:
+
+| | Shared through | When a worker touches it |
+|---|---|---|
+| Code | the git remote | fetch the base at start; rebase onto a fresh base and push at finish |
+| Task state | the Dolt server | every `bd` call, directly, like any database client |
+| The task's checkout | nothing: one machine owns it | — |
+| The transcript | nothing: it stays on that machine's disk | read on resume |
+
+- A worktree is today's cheap way to give each task its own checkout on one machine; on another machine the same thing is a clone. Only one worker ever writes a task's checkout, so it never needs syncing. File-sync tools (Mutagen, Syncthing) solve a problem this design doesn't have.
+- Beads needs no sync with a server. `.beads/config.yaml` is committed, and the `BEADS_DOLT_SERVER_*` variables outrank it, so a fresh clone plus environment variables is a working `bd`.
+- Siblings see each other's merged work when they do today: at rebase time in `finish-task.sh`. A worker that needs a sibling's change earlier fetches the base again.
+- What is really bound to one machine: uncommitted work and the transcript. Keep the disk (a volume, a paused sandbox), or push the task branch often and accept starting a fresh session on resume.
+
+This is how CI runners already work, and how Gas City's Kubernetes runtime works.
+
+## 11. A worker entrypoint
+
+The unit to build is one program that a container boots into: `worker.sh [task]`.
+
+1. With no task given, take the next queued task in work order and claim it; a lost claim race moves to the next.
+2. Clone or fetch the repository at the task's base, or reuse the checkout already on the volume.
+3. Set `BEADS_ACTOR` and the Dolt variables, start a heartbeat (`dispatch_heartbeat` every minute).
+4. Run `claude -p` with today's prompt and flags, or `claude -p --resume` when the task already has a session whose transcript is on this disk.
+5. When Claude exits, run `record-task.sh`, as the detached shell in `run-task.sh` does today.
+
+It is `run-task.sh` split in two: the claiming and choosing stay with whoever dispatches, the rest moves into the entrypoint. Local dispatch becomes `setsid worker.sh <task>` in a worktree, and every remote form is a thin wrapper around the same program.
+
+### Push or pull
+
+- **Push (today's shape):** the supervisor claims a task, picks a machine and starts `worker.sh <task>` there: `ssh host docker run image worker.sh <task>`, a Kubernetes Job, a Daytona sandbox. The supervisor has to reach every machine, and resume can target the machine that holds the disk.
+- **Pull:** identical containers run `worker.sh` with no task, take the next queued task, and exit or loop. Scaling is starting more containers (replicas, `docker run` several times per host); the parallel limit is the number of containers; the supervisor never reaches a worker machine.
+
+What pull changes:
+- **Control:** to keep confirming what starts, the supervisor sets `dispatch_state=queued`, and workers only take queued tasks. The supervisor keeps what and when; workers own where.
+- **Liveness** comes from heartbeats only: no process to find, no runner to ask. A stale heartbeat means crashed.
+- **Logs** stay with the container (`docker logs`, `kubectl logs`). The attempt's cost and result still reach beads through `record-task.sh`, which runs inside the worker.
+- **Resume in place** needs the next worker to mount the crashed one's disk: a volume per task (Kubernetes volume claims, Docker volumes on a fixed host). Without it, resume is a fresh session on the pushed branch with the task's comments as context.
+- **The supervisor's role shrinks:** it queues, watches heartbeats, handles stopped and crashed tasks, and reports. It no longer knows where workers run, which is a change from the agreed dispatch shape and deserves a deliberate decision.
+
+The entrypoint is the same for both, so the choice can wait until it is built: push for local workers and Daytona-style sandboxes, pull for a pool of Docker hosts or a Kubernetes deployment.
+
+### Placement
+
+Keeping an epic's tasks on one machine doesn't reduce clashes. Claims can't clash on one server, and git conflicts come from tasks that run at the same time and touch the same files, wherever they run. Those are reduced by the task graph from `split-plan`, by `epic-merge` keeping epics on separate branches, and by the rebase and verify in `finish-task.sh`.
+
+It is still a good default:
+- siblings share a git object store, the fetched epic branch and build caches
+- workers of one epic can message each other over a local socket, whereas across machines cross-session messaging needs Remote Control
+- one place holds an epic's logs
+- a dead host stalls one epic rather than a slice of all of them
+
+The cost is that an epic runs no more tasks at once than its host has slots, so treat it as a preference:
+- **Push:** start a task on its epic's host when it has a free slot, else on any host; the epic records its host in `dispatch_host`.
+- **Pull:** workers take their host's epics first, then anything queued.
+- **Resume** is the exception: a crashed task always goes back to the machine holding its disk.
+
+If conflicts become a real cost, the answer is scheduling rather than placement: `split-plan` records the files each task expects to touch, and dispatch doesn't run two overlapping tasks at once.
+
 ## Open questions
+
+- Push or pull for remote workers (section 11)?
 
 - Follow Gas Town's multi-machine design (#2801) when it lands, or build sdlc's own runner now?
 
