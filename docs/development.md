@@ -15,7 +15,7 @@ skills/
   build/, dispatch/, create-task/,
   setup/, init/, hooks/, status/, stats/, logs/
                         entry points, one SKILL.md each
-tests/wild/            end-to-end runs in a sandbox
+tests/e2e/             end-to-end suites, driven through real Claude sessions
 docs/                  this documentation
 ```
 
@@ -31,15 +31,38 @@ docs/                  this documentation
 
 ## Tests
 
-Every test runs in a sandbox outside this repository, `~/dev/sdlc-sandbox` by default (`SDLC_SANDBOX`). Workers run on Sonnet (`SDLC_MODEL`).
+Unit tests run against real `bd`, git and `wt`, with no model:
 
 ```bash
-tests/wild/run.sh          # design and split on a new repository, then split on a hand-made epic
-tests/wild/dispatch.sh     # the whole flow on a new project, until no work is left
-SDLC_INTEGRATION=direct tests/wild/dispatch.sh "create a todo list web app"
+python3 -m pytest tests
 ```
 
-Both write per-step transcripts and a `summary.md` with costs. The output isn't deterministic: the point is to watch the plugin work on a real sequence.
+Every e2e module is skipped unless `SDLC_E2E=1`, so this command never calls a model.
+
+Three end-to-end suites drive real Claude sessions against the plugin, under `tests/e2e/`:
+- **build** (`tests/e2e/test_build.py`): `/sdlc:build` from request to merged code, interactive and headless.
+- **skills** (`tests/e2e/skills/`): every skill alone, each on its own prepared project.
+- **flow** (`tests/e2e/test_flow.py`): every skill one after another on one project, without `/sdlc:build`.
+
+```bash
+SDLC_E2E=1 python3 -m pytest tests/e2e/test_fixtures.py                    # prepared states, no model
+SDLC_E2E=1 python3 -m pytest tests/e2e/skills -v                           # every skill alone
+SDLC_E2E=1 python3 -m pytest tests/e2e/skills/test_skill_clean.py         # one skill
+SDLC_E2E=1 python3 -m pytest tests/e2e/test_flow.py -v                     # skills one by one
+SDLC_E2E=1 python3 -m pytest tests/e2e/test_build.py -v                    # /sdlc:build
+```
+
+A session is driven through `claude -p` with stream-json input and output: it answers AskUserQuestion and approves plans, so a skill's interactive branch is tested. `interactive=False` leaves out the permission-prompt tool, so the skill takes its headless branch instead.
+
+Sandboxes are created under `SDLC_SANDBOX` and kept after the run. Each session's transcript lands at `<sandbox>/logs/<name>.jsonl`, and its cost and turns are appended to `<sandbox>/logs/summary.md`.
+
+Environment variables:
+- `SDLC_E2E`: set to `1` to run the e2e suites; unset skips them.
+- `SDLC_SANDBOX`: where sandboxes are created, `~/dev/sdlc-sandbox` by default.
+- `SDLC_MODEL`: the model sessions run on, `sonnet` by default.
+- `SDLC_INTEGRATION`: the integration mode build and flow use, `epic-merge` by default.
+- `SDLC_E2E_REQUEST`: the request build and flow send, "create a command-line todo list in Python with add, list and done commands, stored in a JSON file" by default.
+- `SDLC_E2E_TIMEOUT`: seconds before a run gives up waiting, 3600 (60 minutes) by default.
 
 To try the plugin by hand, start a session in a sandbox project with `claude --plugin-dir /path/to/claude-sdlc`.
 
