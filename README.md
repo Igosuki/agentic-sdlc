@@ -34,7 +34,7 @@ A one-off request and a long-running project go through the same flow. What carr
 - **Design before code.** `design` finds prior art (docs, code, existing beads, and connected sources with your permission), removes ambiguity, and states the design in the session, editing existing docs wherever the design makes them wrong or incomplete.
 - **Task graphs with real checks.** `split` turns a design, a plan or a prompt into beads tasks. Each task has acceptance criteria, a path scope, dependencies, and a verify command that exercises the behaviour.
 - **One task, one worktree, one session.** `dispatch` starts a headless Claude Code session per task, in its own worktree. That worker implements the task, delegating to your installed agents when your configuration says so, then merges and closes it.
-- **Merges that can't skip the checks.** Workers merge through `finish-task.sh`. While holding the branch's merge queue, it rebases, runs the verify command, runs the project's own `[pre-merge]` checks (type check, lint, tests, from `.config/wt.toml`) and merges. When that fails, the worker, which has the task's context, fixes it.
+- **Merges that can't skip the checks.** Workers merge through `finish-task.sh`. While holding the branch's merge queue, it rebases, runs the verify command, runs the project's own optional `[pre-merge]` hooks (type check, lint, tests, from `.config/wt.toml`, proposed by `/sdlc:hooks`) and merges. When that fails, the worker, which has the task's context, fixes it.
 - **Review before merging, when a task asks for it.** `--review agent` sends the diff to a separate reviewer session, which asks for changes or approves; `--review human` opens a gate that stops the task until a person reviews the diff and resolves it.
 - **Work order.** Epics already in progress come first, then priority. Within an epic, tasks that unblock the most others go first.
 - **Crash recovery.** The session id is stored on the task before the worker starts. After a crash or a reboot, `/sdlc:dispatch` resumes each worker's own conversation in its worktree.
@@ -111,6 +111,7 @@ After a restart, or to pick up work in progress, run `/sdlc:dispatch` again.
 |---|---|
 | `/sdlc:setup` | Checks this machine for the tools sdlc needs, and recommends companions (rtk, reviewer and specialist agents) |
 | `/sdlc:init` | Prepares a project: beads, integration mode, target branch, `.claude/sdlc.local.md`, `.gitignore` |
+| `/sdlc:hooks` | Reads the project and suggests `wt` hooks for dependency installs and merge checks |
 | `/sdlc:build <request>` | Runs design in plan mode for your approval, then splits it into tasks for your approval, and dispatches them |
 | `/sdlc:design <request>` | Finds prior art, clears up ambiguity, and states the design in the session, editing existing docs where they're now wrong or incomplete |
 | `/sdlc:split [docs] [prompt \| bead-id]` | Splits a design, a plan-mode plan or a prompt into a beads task graph, or an existing bead into child tasks |

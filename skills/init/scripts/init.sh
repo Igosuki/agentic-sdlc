@@ -4,7 +4,7 @@ set -euo pipefail
 usage() {
   cat <<'EOF2'
 Usage: init.sh [--integration MODE] [--target BRANCH] [--parallel N]
-                [--workflow build|none] [--pre-merge NAME=COMMAND]...
+                [--workflow build|none]
 
 Prepares the current git repository for sdlc. Safe to run again: it fills in
 what is missing, and changes a setting only when an option asks for it.
@@ -14,9 +14,7 @@ what is missing, and changes a setting only when an option asks for it.
      and custom.dispatch.target (default: the current branch)
   3. .claude/sdlc.local.md: parallel (default 2) and workflow when given
   4. .gitignore: .claude/*.local.md and .worktrees/
-  5. .config/wt.toml: adds NAME=COMMAND under [pre-merge] for each --pre-merge, without
-     touching a key that is already there
-  6. .beads/hooks/{on_create,on_update,on_close}: writes each hook that wakes the
+  5. .beads/hooks/{on_create,on_update,on_close}: writes each hook that wakes the
      supervisor via the wake pipe, leaving alone one that already exists and isn't ours
 
 Prints one line per step, starting with "created", "set", "kept", "added" or "updated".
@@ -26,16 +24,14 @@ EOF2
 }
 
 integration="" target="" parallel="" workflow=""
-pre_merge=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -h|--help) usage; exit 0 ;;
-    --integration|--target|--parallel|--workflow|--pre-merge)
+    --integration|--target|--parallel|--workflow)
       [[ $# -ge 2 ]] || { echo "error: $1 needs a value" >&2; usage >&2; exit 2; }
       case "$1" in
         --integration) integration="$2" ;; --target) target="$2" ;; --parallel) parallel="$2" ;;
         --workflow) workflow="$2" ;;
-        --pre-merge) pre_merge+=("$2") ;;
       esac
       shift ;;
     *) echo "error: unknown argument $1" >&2; usage >&2; exit 2 ;;
@@ -47,9 +43,6 @@ errors=()
 [[ -z "$integration" || "$integration" =~ ^(direct|epic-merge|epic-pr)$ ]] || errors+=("--integration must be direct, epic-merge or epic-pr")
 [[ -z "$parallel" || "$parallel" =~ ^[1-9][0-9]*$ ]] || errors+=("--parallel must be a positive number")
 [[ -z "$workflow" || "$workflow" =~ ^(build|none)$ ]] || errors+=("--workflow must be build or none")
-for entry in "${pre_merge[@]}"; do
-  [[ "$entry" =~ ^[A-Za-z0-9_-]+=.+$ ]] || errors+=("--pre-merge must be NAME=COMMAND, got: $entry")
-done
 if common=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null); then
   root=$(dirname "$common")
 else
@@ -122,36 +115,6 @@ for line in '.claude/*.local.md' '.worktrees/'; do
     echo "added .gitignore entry $line"
   fi
 done
-
-if [[ ${#pre_merge[@]} -gt 0 ]]; then
-  toml=.config/wt.toml
-  mkdir -p .config
-  touch "$toml"
-  for entry in "${pre_merge[@]}"; do
-    name=${entry%%=*} value=${entry#*=}
-    if awk -v name="$name" '
-        /^\[pre-merge\]/ { insec = 1; next }
-        /^\[/ { insec = 0 }
-        insec && $0 ~ "^" name "[ \t]*=" { found = 1 }
-        END { exit !found }
-      ' "$toml"; then
-      echo "kept pre-merge $name"
-      continue
-    fi
-    escaped=${value//\\/\\\\}
-    escaped=${escaped//\"/\\\"}
-    if grep -qxF '[pre-merge]' "$toml"; then
-      tmp=$(mktemp)
-      awk -v name="$name" -v val="$escaped" '
-        { print }
-        /^\[pre-merge\]/ && !done { print name " = \"" val "\""; done = 1 }
-      ' "$toml" > "$tmp" && mv "$tmp" "$toml"
-    else
-      { [[ -s "$toml" ]] && echo; echo "[pre-merge]"; echo "$name = \"$escaped\""; } >> "$toml"
-    fi
-    echo "added pre-merge $name"
-  done
-fi
 
 hook_marker="# sdlc: wake the supervisor"
 hook_body=$(cat <<HOOK

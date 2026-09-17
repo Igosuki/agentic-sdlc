@@ -111,7 +111,8 @@ fi
 "$dir/merge-queue.sh" ensure "$base" >/dev/null
 
 session=$(uuidgen)
-logs="$(git rev-parse --path-format=absolute --git-common-dir)/sdlc/logs"
+common=$(git rev-parse --path-format=absolute --git-common-dir)
+logs="$common/sdlc/logs"
 mkdir -p "$logs"
 log="$logs/$id-$session.jsonl"
 bd update "$id" --claim --set-metadata "dispatch_session=$session" \
@@ -129,14 +130,20 @@ rollback() {
 }
 trap rollback EXIT
 fail() { printf 'error: %s\n' "$1" >&2; exit 1; }
+needs_approval() { grep -q "needs approval" <<<"$1" && grep -q "Cannot prompt for approval in non-interactive environment" <<<"$1"; }
 
 if [[ "$role" == integration ]]; then
   switch=(wt switch "$branch" --no-cd --format json)
 else
   switch=(wt switch --create "$branch" --base "$base" --no-cd --format json)
 fi
-"${switch[@]}" </dev/null >/dev/null 2>"$log.wt" \
-  || fail "could not create the worktree for $branch: $(cat "$log.wt" 2>/dev/null)"
+if ! "${switch[@]}" </dev/null >/dev/null 2>"$log.wt"; then
+  wt_err=$(cat "$log.wt" 2>/dev/null)
+  if needs_approval "$wt_err"; then
+    fail "the project's hooks aren't approved on this machine; a person runs wt config approvals add in $(dirname "$common")"
+  fi
+  fail "could not create the worktree for $branch: $wt_err"
+fi
 wt_path=$(wt list --format json </dev/null 2>/dev/null | jq -r --arg b "$branch" '.items[] | select(.branch == $b) | .worktree.path // empty')
 [[ -n "$wt_path" && -d "$wt_path" ]] || fail "no worktree for branch $branch"
 

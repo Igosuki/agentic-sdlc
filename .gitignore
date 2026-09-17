@@ -6,3 +6,4 @@
 .beads/proxieddb/
 .worktrees/
 __pycache__/
+.idea
