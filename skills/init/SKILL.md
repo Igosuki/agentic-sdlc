@@ -4,6 +4,7 @@ description: Prepare the current project for sdlc. Initializes beads, sets the i
 argument-hint: "[--integration direct|epic-merge|epic-pr] [--target BRANCH] [--parallel N] [--workflow build|none]"
 disable-model-invocation: true
 model: sonnet
+allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/settings.sh *), Bash(git branch --show-current)
 ---
 
 # Init

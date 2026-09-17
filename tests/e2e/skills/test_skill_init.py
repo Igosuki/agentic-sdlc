@@ -12,7 +12,7 @@ from helpers import git_log_subjects, setting  # noqa: E402
 SDLC_E2E = os.environ.get("SDLC_E2E") == "1"
 
 ANSWERS = {
-    r"[Ii]ntegration": r"epic-merge",
+    r"(?i)integrat": r"^epic-merge",
     r"[Tt]arget": r"\bmain\b",
     r"build": r"^Yes",
     r"[Cc]ommit": r"^Yes",

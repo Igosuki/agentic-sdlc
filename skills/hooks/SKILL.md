@@ -3,6 +3,7 @@ name: hooks
 description: Read the project (manifests, lock files, CI, task runners, git hook managers) and suggest optional wt hooks for what sdlc triggers, such as installing dependencies in a new task worktree and running the project's fast checks before a merge, then write the ones you pick to .config/wt.toml. Safe to run again. Use once a project has build files, and again when its toolchain changes.
 disable-model-invocation: true
 model: sonnet
+allowed-tools: Bash(wt hook show)
 ---
 
 # Hooks
