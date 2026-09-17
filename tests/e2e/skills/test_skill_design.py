@@ -8,7 +8,7 @@ sys.path.insert(0, SKILLS_DIR)
 sys.path.insert(0, os.path.dirname(SKILLS_DIR))
 from sandbox import new_project  # noqa: E402
 from session import Session  # noqa: E402
-from helpers import assistant_text, bd_json, git_head, git_status  # noqa: E402
+from helpers import bd_json, git_head, git_status  # noqa: E402
 
 SDLC_E2E = os.environ.get("SDLC_E2E") == "1"
 
@@ -52,11 +52,10 @@ class TestSkillDesign(unittest.TestCase):
         before_branches = self._branches(project.repo)
 
         session = Session(project.repo, "design")
-        session.run("/sdlc:design add a --json flag to the list command")
+        result = session.run("/sdlc:design add a --json flag to the list command")
 
-        # The design is stated mid-conversation, with a short report as the final
-        # turn, so the full reply (not SessionResult.text alone) carries the markers.
-        reply = assistant_text(os.path.join(project.logs, "design.jsonl"))
+        # The design is stated mid-conversation and the final turn is only a short report.
+        reply = result.said
         self.assertIn("Prior art", reply)
         self.assertIn("Open questions", reply)
 

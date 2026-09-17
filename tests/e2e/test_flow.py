@@ -144,7 +144,7 @@ class TestFlow(unittest.TestCase):
         result = cls.session_a.run(f"/sdlc:design {REQUEST}")
         cls.session_a_id = result.session_id
 
-        self.assertRegex(result.text, r"Prior art")
+        self.assertRegex(result.said, r"Prior art")
         self.assertEqual(_bd_json(self.project.repo, "list", "--all", "--limit", "0"), [])
 
     @ordered_step
@@ -315,7 +315,7 @@ class TestFlow(unittest.TestCase):
         session = Session(self.project.repo, "review", interactive=False)
         result = session.run(f"/sdlc:review {cls.epic_id}")
 
-        self.assertRegex(result.text, r"(?i)approve|request changes")
+        self.assertRegex(result.said, r"(?i)approve|request changes")
         for t in result.tools:
             if t["name"] == "Bash":
                 self.assertNotRegex((t["input"] or {}).get("command", ""), BD_WRITE_RE)

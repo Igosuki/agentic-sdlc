@@ -31,6 +31,7 @@ class SessionResult:
     questions: list = field(default_factory=list)
     plans: list = field(default_factory=list)
     prompts: list = field(default_factory=list)
+    said: str = ""
 
 
 def _strip_skill_prefix(name):
@@ -77,6 +78,7 @@ class Session:
         self.plans = []
         self.prompts = []
         self.results = []
+        self.said = []
         self.cost_usd = 0.0
         self.turns = 0
         self.is_error = False
@@ -143,6 +145,8 @@ class Session:
 
     def _handle_assistant(self, msg):
         for c in msg.get("message", {}).get("content", []):
+            if c.get("type") == "text":
+                self.said.append(c["text"])
             if c.get("type") != "tool_use":
                 continue
             name, tool_input = c.get("name"), c.get("input")
@@ -263,4 +267,5 @@ class Session:
             questions=list(self.questions),
             plans=list(self.plans),
             prompts=list(self.prompts),
+            said="\n".join(self.said),
         )

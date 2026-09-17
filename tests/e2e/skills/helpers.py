@@ -67,23 +67,6 @@ def git_log_subjects(repo):
     return result.stdout.splitlines()
 
 
-def assistant_text(logfile):
-    # SessionResult.text is only the final turn's text; a skill that states its
-    # result mid-conversation and adds a short report afterward (design, split)
-    # needs the full reply, so this concatenates every assistant text block in order.
-    chunks = []
-    with open(logfile) as f:
-        for line in f:
-            if line.startswith(">> ") or not line.strip():
-                continue
-            msg = json.loads(line)
-            if msg.get("type") != "assistant":
-                continue
-            for c in msg.get("message", {}).get("content", []):
-                if c.get("type") == "text":
-                    chunks.append(c["text"])
-    return "\n".join(chunks)
-
 
 def transcript_events(logfile):
     # Replays the raw transcript to recover the order of questions vs. tool calls:
