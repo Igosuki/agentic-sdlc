@@ -32,9 +32,9 @@ Keep work together when:
 
 ## Review
 
-Set `--review` on each task:
-- `agent`: medium and large tasks, and any task touching authentication, security, payments, data migrations or public APIs
-- `human`: a person must sign off — security-sensitive changes, destructive migrations, legal or compliance text
+Set `--review` on each task. An agent reviews by default; a person is rarely needed.
+- `agent`: every task not covered below, including authentication, security, payments, data migrations and public APIs
+- `human`: only when an agent's approval isn't enough — legal or compliance text, a destructive data migration, or a request that asks for a person's sign-off
 - `none`: small documentation, configuration or test-only tasks
 
 ## Shared interfaces

@@ -9,7 +9,7 @@ Run by a task's worker once its work is committed. While holding the merge
 queue of the task's base branch:
   1. checks that the branch has commits and no tracked file has uncommitted changes
   2. reviews the change, per the task's review level (metadata review, else
-     bd config custom.dispatch.review, default none). For an integration task,
+     bd config custom.dispatch.review, default agent). For an integration task,
      the level is the epic's metadata.review instead, default none:
        none    no review
        agent   a separate reviewer session judges the diff; on requested
@@ -99,7 +99,7 @@ else
   if [[ -z "$review" ]]; then
     review=$(bd config get custom.dispatch.review 2>/dev/null) || review=""
     [[ "$review" != *"(not set)" ]] || review=""
-    review=${review:-none}
+    review=${review:-agent}
   fi
 fi
 

@@ -77,7 +77,7 @@ A worker is one headless Claude Code session, running as the `sdlc:worker` agent
 
 ## Review levels
 
-Each task has a review level, `--review none|agent|human` on `create-task.sh`, defaulting to `bd config custom.dispatch.review` (itself defaulting to `none`). `finish-task.sh` enforces it, after the committed check and before the merge:
+Each task has a review level, `--review none|agent|human` on `create-task.sh`, defaulting to `bd config custom.dispatch.review` (itself defaulting to `agent`). `finish-task.sh` enforces it, after the committed check and before the merge:
 
 - **`none`:** no review, straight to merging.
 - **`agent`:** a separate reviewer session (an installed `reviewer` agent if there is one, otherwise a plain Sonnet session) runs `/sdlc:review <task>` (`skills/review/SKILL.md`), with `--json-schema` structuring its verdict. On approval, the merge continues. On requested changes, `finish-task.sh` exits 1 with the findings, the worker fixes them and runs it again. After 3 rounds it exits 3: a person is needed.

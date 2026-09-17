@@ -27,7 +27,7 @@ Bead commands return little and can run directly:
 Follow `${CLAUDE_PLUGIN_ROOT}/skills/split/references/task-rules.md` for sizing, scope, review level and task format. Read it if it isn't already in your context.
 - **Verify:** one short command that exits 0 when the acceptance is met. It must exercise the behaviour, so a syntax check alone doesn't count.
 - **Scope:** the path prefixes the task changes.
-- **Review:** choose `--review` with the same rules as `task-rules.md`: `agent` for medium and large tasks and tasks touching authentication, security, payments, data migrations or public APIs; `human` when a person must sign off; `none` for small documentation, configuration or test-only tasks.
+- **Review:** choose `--review` with the same rules as `task-rules.md`: `agent` by default; `human` only when an agent's approval isn't enough (legal or compliance text, a destructive data migration, or a request that asks for a person's sign-off); `none` for small documentation, configuration or test-only tasks.
 - **Large requests:** if `task-rules.md`'s size thresholds make this large, create nothing here. Hand off to `/sdlc:split "<request>"` instead.
 
 Ask with AskUserQuestion only what you can't infer, such as which epic the task belongs to. If AskUserQuestion isn't available (headless session), choose the most reasonable option and write it under "Assumptions" in the description.

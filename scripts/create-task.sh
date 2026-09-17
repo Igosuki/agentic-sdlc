@@ -23,7 +23,7 @@ Options:
   --model MODEL          execution_suggested_model: the worker session's model
   --effort LEVEL         execution_reasoning_effort: low|medium|high|xhigh|max
   --review LEVEL         none|agent|human: review before merging (default: bd config
-                         custom.dispatch.review, else none)
+                         custom.dispatch.review, else agent)
 
 Exit codes: 0 created, 2 invalid arguments (all problems listed), 1 bd failed.
 EOF

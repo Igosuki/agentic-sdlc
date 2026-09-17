@@ -140,7 +140,7 @@ Shared by everyone using the repository, in beads:
 ```bash
 bd config set custom.dispatch.integration epic-merge   # direct (default), epic-merge or epic-pr
 bd config set custom.dispatch.target main              # branch the work ends up in (default: the current branch)
-bd config set custom.dispatch.review agent             # none (default), agent or human
+bd config set custom.dispatch.review none              # agent (default), none or human
 ```
 
 Tasks can carry hints for their worker: `execution_agent_type`, `execution_suggested_model` and `execution_reasoning_effort`. See [configuration](docs/configuration.md).
