@@ -12,7 +12,7 @@ metadata.dispatch_branch, builds the claude -p command from the task's
 metadata, and runs it under setsid so it outlives whoever started it. Writes
 a dispatch_run line to the log first, then, once the worker ends, runs
 record-task.sh to record the attempt, then writes "ended <task-id>" to the
-wake pipe if it exists.
+wake pipe if it exists. Marks the branch's worktrunk state marker running.
 
 Agent: sdlc:integrator when metadata.dispatch_role is integration, else
 sdlc:worker. That agent's frontmatter picks the model unless overridden.
@@ -70,6 +70,7 @@ mkdir -p "$logs"
 log="$logs/$id-$session.jsonl"
 
 plugin_root=$(cd "$dir/.." && pwd)
+
 finish="$dir/finish-task.sh"
 worker=(env "DISPATCH_TASK=$id" claude -p --permission-mode auto --output-format stream-json --verbose --forward-subagent-text
   --allowedTools "Bash($finish *)")
@@ -95,5 +96,7 @@ env -u SDLC_SUPERVISOR setsid -f bash -c '
   [[ -p "$wake" ]] && printf "ended %s\n" "$id" 1<>"$wake"
 ' start-worker "$wt_path" "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")" "$log" "$dir/record-task.sh" "$id" \
   "${worker[@]}" "$prompt" </dev/null >/dev/null 2>&1
+
+[[ -z "$branch" ]] || "$dir/mark-branch.sh" "$branch" running
 
 if [[ "$resume" == true ]]; then echo "resumed $id $wt_path $log"; else echo "started $id $wt_path $log"; fi

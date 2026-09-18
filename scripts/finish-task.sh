@@ -41,6 +41,8 @@ On a problem the worker can fix, it prints what to fix and exits 1: fix it,
 commit, run it again. On a problem only a person can resolve, it exits 3: the
 worker records it with bd comments add and stops.
 The worktree is removed later, by record-task.sh, once the worker has ended.
+Sets the branch's worktrunk state marker at each dispatch_state change
+(awaiting-review, pr-opened, merged).
 
 Exit codes: 0 merged and closed, 1 something the worker fixes,
   2 invalid arguments or no dispatched worker, 3 a person is needed.
@@ -190,6 +192,7 @@ if [[ "$review" == human ]]; then
       gate=$(bd gate create --type=human --blocks "$id" --reason "review $review_target: git diff $base...$branch in $wt_path" --json | jq -r .id)
       bd update "$id" --set-metadata "dispatch_review_gate=$gate" --set-metadata "dispatch_review_gate_patch=$patch" \
         --set-metadata dispatch_state=awaiting-review >/dev/null
+      [[ -z "$branch" ]] || "$dir/mark-branch.sh" "$branch" awaiting-review
       person "$id waits for a human review (gate $gate). Stop now: you'll be resumed after the review."
     fi
   fi
@@ -235,6 +238,7 @@ $(bd list --parent "$epic" --all --limit 0 --json | jq -r --arg id "$id" '.[] | 
   # closes, with its epic, once the gate resolves.
   bd gate create --type=gh:pr --blocks "$id" --await-id="$number" --reason "pull request $url merged" >/dev/null
   bd update "$id" --set-metadata "dispatch_pr=$url" --set-metadata dispatch_state=pr-opened >/dev/null
+  [[ -z "$branch" ]] || "$dir/mark-branch.sh" "$branch" pr-opened
   echo "opened $url for $epic; $id and $epic close once the pull request is merged"
   exit 0
 fi
@@ -252,6 +256,7 @@ rm -f "$merge_log"
 
 bd close "$id" --reason "merged into $base" >/dev/null
 bd update "$id" --set-metadata dispatch_state=merged >/dev/null
+[[ -z "$branch" ]] || "$dir/mark-branch.sh" "$branch" merged
 echo "merged $id into $base and closed it"
 
 # A parent task closes once its last child does, since its code merged along with it.

@@ -12,7 +12,8 @@ Lists leftovers, one line per item with its reason:
   queue <branch> held by a task whose worker isn't running
 
 With --apply, removes each: wt remove -D for a worktree, git branch -D for a
-branch left without one, merge-queue.sh release for a queue.
+branch left without one, merge-queue.sh release for a queue. Clears the
+branch's worktrunk state marker once its worktree or branch is removed.
 
 Never touches the main checkout, the worktree of a claimed task (in_progress),
 or a task whose dispatch_state is stopped, failed or awaiting-review.
@@ -63,8 +64,13 @@ while IFS= read -r item; do
   else
     echo "worktree $branch  open task with no dispatch_branch, worktree left behind (reset)"
   fi
-  [[ "$apply" == false ]] || wt remove -D "$branch" </dev/null >/dev/null 2>&1 \
-    || echo "error: could not remove the worktree for $branch" >&2
+  if [[ "$apply" == true ]]; then
+    if wt remove -D "$branch" </dev/null >/dev/null 2>&1; then
+      "$dir/mark-branch.sh" "$branch" clear
+    else
+      echo "error: could not remove the worktree for $branch" >&2
+    fi
+  fi
 done <<<"$wt_items"
 
 # A closed task's branch with no worktree: record-task.sh can leave one behind when the
@@ -77,8 +83,13 @@ while IFS= read -r branch; do
   [[ -n "$bead" ]] || continue
   [[ "$(jq -r '.status' <<<"$bead")" == closed ]] || continue
   echo "branch $branch  closed task, branch left behind with no worktree"
-  [[ "$apply" == false ]] || git branch -D "$branch" >/dev/null 2>&1 \
-    || echo "error: could not delete branch $branch" >&2
+  if [[ "$apply" == true ]]; then
+    if git branch -D "$branch" >/dev/null 2>&1; then
+      "$dir/mark-branch.sh" "$branch" clear
+    else
+      echo "error: could not delete branch $branch" >&2
+    fi
+  fi
 done < <(git for-each-ref --format='%(refname:short)' refs/heads/)
 
 # A merge queue bead is held (in_progress, an assignee) while a task rebases, verifies and

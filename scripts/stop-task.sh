@@ -16,7 +16,8 @@ For each worker stopped:
   3. releases the branch's merge queue (merge-queue.sh release)
   4. waits for start-worker.sh's own record-task.sh call (it runs once the
      process ends) to finish, then sets dispatch_state=stopped again, so
-     whichever of the two writes last, the task still ends up stopped
+     whichever of the two writes last, the task still ends up stopped, and
+     marks the branch's worktrunk state marker stopped
   5. adds a comment saying a person stopped it
 
 A task, or an epic, with no running worker is reported, unchanged.
@@ -80,6 +81,8 @@ stop_one() {
     sleep 0.5
   done
   bd update "$t" --set-metadata dispatch_state=stopped >/dev/null
+  branch=$(jq -r '.metadata.dispatch_branch // empty' <<<"$t_json")
+  [[ -z "$branch" ]] || "$dir/mark-branch.sh" "$branch" stopped
   bd comments add "$t" "Stopped by a person." >/dev/null
   echo "stopped $t"
 }

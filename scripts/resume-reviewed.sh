@@ -12,8 +12,9 @@ dispatch_state and resumes its session, with the same prompt, to read the
 review and continue. Run by supervise.py.
 
 Prints "resumed <task>" once resumed, or "not resumed <task>: <reason>" if
-the resume itself fails, restoring dispatch_state=awaiting-review. Prints
-nothing when its gate is still open or its worker still runs.
+the resume itself fails, restoring dispatch_state=awaiting-review and the
+branch's worktrunk state marker. Prints nothing when its gate is still open
+or its worker still runs.
 Exit codes: 0 done (including nothing to do), 2 invalid arguments or the task
 isn't awaiting review.
 EOF2
@@ -43,6 +44,8 @@ bd update "$id" --unset-metadata dispatch_state >/dev/null
 if ! out=$("$dir/resume-task.sh" "$id" --ended --prompt \
   "A person reviewed your change (gate $gate resolved). Read the task's comments (bd comments $id). If they ask for changes, make them and commit. Then run $finish $id again." 2>&1); then
   bd update "$id" --set-metadata dispatch_state=awaiting-review >/dev/null
+  branch=$(get .metadata.dispatch_branch)
+  [[ -z "$branch" ]] || "$dir/mark-branch.sh" "$branch" awaiting-review
   echo "not resumed $id: $(tail -1 <<<"$out")"
   exit 0
 fi

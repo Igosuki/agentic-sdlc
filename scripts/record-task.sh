@@ -18,11 +18,12 @@ From the result lines of the worker log, it sets on the task:
 and creates a closed event bead dispatch.<state> targeting the task, with the
 worker's final message as its description. For a merged task it then removes
 the worktree, unless untracked files are left in it. A task awaiting review
-keeps its worktree.
+keeps its worktree. Sets the branch's worktrunk state marker to dispatch_state,
+or clears it once the worktree is removed.
 
 A log without a result means the worker didn't end normally: nothing is
 recorded, and the task stays claimed with no outcome recorded, which shows as
-crashed.
+crashed (the branch's marker is set to crashed).
 
 --failed REASON records a crashed worker that won't be resumed: its log has no
 result line, or its worktree or transcript is gone. It sets dispatch_state=failed
@@ -86,6 +87,7 @@ if [[ -n "$failed" ]]; then
   [[ -z "$agents" ]] || meta+=(--set-metadata "dispatch_agents=$agents")
   bd update "$id" "${meta[@]}" >/dev/null
   bd comments add "$id" "$failed" >/dev/null
+  [[ -z "$branch" ]] || "$dir/mark-branch.sh" "$branch" failed
 
   payload=$(jq -cn --arg session "$session" --arg agents "$agents" \
     --argjson cost "$cost" --argjson turns "$turns" --argjson seconds "$seconds" \
@@ -104,7 +106,11 @@ if [[ -n "$failed" ]]; then
   exit 0
 fi
 
-[[ -n "$results" ]] || { echo "no result for $id in $log: the worker didn't end normally"; exit 1; }
+if [[ -z "$results" ]]; then
+  [[ -z "$branch" ]] || "$dir/mark-branch.sh" "$branch" crashed
+  echo "no result for $id in $log: the worker didn't end normally"
+  exit 1
+fi
 last=$(tail -1 <<<"$results")
 
 read -r cost turns seconds < <("$dir/tasks.py" log-totals "$log")
@@ -131,6 +137,7 @@ meta=(--set-metadata "dispatch_state=$state" --set-metadata "dispatch_cost=$cost
 [[ -z "$models" ]] || meta+=(--set-metadata "dispatch_model=$models")
 [[ -z "$agents" ]] || meta+=(--set-metadata "dispatch_agents=$agents")
 bd update "$id" "${meta[@]}" >/dev/null
+[[ -z "$branch" ]] || "$dir/mark-branch.sh" "$branch" "$state"
 
 payload=$(jq -cn --arg session "$session" --arg model "$models" --arg agents "$agents" \
   --argjson cost "$cost" --argjson turns "$turns" --argjson seconds "$seconds" \
@@ -149,6 +156,8 @@ if [[ "$state" == merged || "$state" == pr-opened ]] && [[ -n "$branch" ]]; then
   if wt remove "$branch" </dev/null >/dev/null 2>"$log.remove"; then
     # A task branch rebased into an epic branch isn't an ancestor of it, so wt keeps the branch.
     ! git rev-parse --verify --quiet "refs/heads/$branch" >/dev/null || git branch -D "$branch" >/dev/null
+    # wt remove leaves the git config state marker behind.
+    "$dir/mark-branch.sh" "$branch" clear
   else
     note=" · worktree kept, see $log.remove"
   fi
