@@ -28,6 +28,7 @@ docs/                  this documentation
 - **Headless-aware skills:** ask with AskUserQuestion when it is available. Otherwise decide, and record the assumption. Never ask in plain text and stop.
 - **Planning skills use `model: opus`** and gather information with the skills, agents and MCP tools the user installed. Workers run on Sonnet; the supervisor is a script, with no model.
 - **Nothing named "sdlc"** in bead statuses or labels. Runtime keys are prefixed `dispatch_`.
+- **The conventions above are also rules,** in `.claude/rules/`: three load in every session, four load when Claude opens a skill, a script, a test or a doc. A convention that changes changes both this file and its rule.
 
 ## Tests
 
